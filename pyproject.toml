@@ -51,3 +51,6 @@ Homepage = "https://github.com/Frank-Hoffmann-Dev/sup2srt"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/benzintracker"]
+
+[tool.hatch.build.targets.wheel.include-pattern]
+patterns = ["src/benzintracker/**"]

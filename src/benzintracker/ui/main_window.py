@@ -13,11 +13,12 @@ import random
 
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QStatusBar,
-    QLabel, QApplication, QPushButton, QToolBar
+    QLabel, QPushButton, QToolBar
 )
 from PySide6.QtCore import QTimer
 
-from benzintracker.ui import styles
+from benzintracker.__init__ import __version__
+from benzintracker.ui.styles import apply_theme
 from benzintracker.ui.tabs.map_tab import MapTab
 from benzintracker.ui.tabs.table_tab import TableTab
 from benzintracker.ui.tabs.stats_tab import StatsTab
@@ -26,10 +27,11 @@ from benzintracker.api.service import refresh_for_location
 from benzintracker.api.tankerkonig import TankerkonigError
 from benzintracker.database import models
 from benzintracker.settings import app_settings
+from benzintracker.translator import tr, translator
 
 
 WINDOW_MIN_SIZE_WIDTH  = 1000
-WINDOW_MIN_SIZE_HEIGHT = 780 
+WINDOW_MIN_SIZE_HEIGHT = 850 
 FIRST_CALL_DELAY = 500
 
 TIMER_REFRESH_LABEL = 10_000        # One Minute;
@@ -40,7 +42,7 @@ MIN_MANUAL_REFRESH_SEC = 300        # 5 Minutes;
 class MainWindow(QMainWindow):
     def __init__(self, initial_theme: str = "light"):
         super().__init__()
-        self.setWindowTitle("Benzintracker")
+        self.setWindowTitle(tr("app.title"))
         self.setMinimumSize(WINDOW_MIN_SIZE_WIDTH, WINDOW_MIN_SIZE_HEIGHT)
 
         self._theme = initial_theme
@@ -50,6 +52,7 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._apply_theme(self._theme)
         self._setup_timer()
+        translator.language_changed.connect(self.retranslate)
 
         # Make directly after start the first call (with a slight delay);
         QTimer.singleShot(FIRST_CALL_DELAY, self._do_refresh)
@@ -69,10 +72,10 @@ class MainWindow(QMainWindow):
         self.tab_stats = StatsTab(self)
         self.tab_settings = SettingsTab(self)
 
-        self.tabs.addTab(self.tab_map, "🗺 Karte")
-        self.tabs.addTab(self.tab_table, "📋 Prices")
-        self.tabs.addTab(self.tab_stats, "📈 Statistics")
-        self.tabs.addTab(self.tab_settings, "🔧 Settings")
+        self.tabs.addTab(self.tab_map, tr("tabs.map"))
+        self.tabs.addTab(self.tab_table, tr("tabs.prices"))
+        self.tabs.addTab(self.tab_stats, tr("tabs.stats"))
+        self.tabs.addTab(self.tab_settings, tr("tabs.settings"))
 
         self.setCentralWidget(self.tabs)
 
@@ -84,10 +87,8 @@ class MainWindow(QMainWindow):
             "QToolBar { border: none; padding: 4px 8px, spacing: 8px; }"
         )
 
-        self.btn_manual_refresh = QPushButton("🔄 Request Now")
-        self.btn_manual_refresh.setToolTip(
-            "Request the data manually (only 5 minutes after the last call available)"
-        )
+        self.btn_manual_refresh = QPushButton(tr("toolbar.refresh_now"))
+        self.btn_manual_refresh.setToolTip(tr("toolbar.refresh_now"))
         self.btn_manual_refresh.clicked.connect(self._on_manual_refresh)
         toolbar.addWidget(self.btn_manual_refresh)
 
@@ -97,12 +98,16 @@ class MainWindow(QMainWindow):
         toolbar.addWidget(self.label_manual_hint)
 
         self.addToolBar(toolbar)
+        self.insertToolBarBreak(toolbar)
 
         # Statusbar;
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
 
-        self.label_last_refresh = QLabel("No API Call made yet")
+        self.label_version = QLabel(f"Version: {__version__}")
+        self.label_version.setObjectName("label_status")
+
+        self.label_last_refresh = QLabel(tr("status.no_refresh"))
         self.label_last_refresh.setObjectName("label_status")
 
         self.label_next_refresh = QLabel("")
@@ -111,6 +116,8 @@ class MainWindow(QMainWindow):
         self.label_error = QLabel("")
         self.label_error.setObjectName("label_error")
 
+        self.status_bar.addWidget(self.label_version)
+        self.status_bar.addWidget(QLabel(" | "))
         self.status_bar.addWidget(self.label_last_refresh)
         self.status_bar.addWidget(QLabel(" | "))
         self.status_bar.addWidget(self.label_next_refresh)
@@ -148,7 +155,7 @@ class MainWindow(QMainWindow):
 
         # Deactivate the button at startup;
         self.btn_manual_refresh.setEnabled(False)
-        self.label_manual_hint.setText("Waiting for the first call...")
+        self.label_manual_hint.setText(tr("toolbar.waiting_first"))
 
 
     def _restart_timer(self):
@@ -166,13 +173,11 @@ class MainWindow(QMainWindow):
         """
         loc = models.get_default_location()
         if loc is None:
-            self.label_error.setText(
-                "No Location set yet - check the Settings Tab."
-            )
+            self.label_error.setText(tr("status.no_location"))
             return
 
         self.label_error.setText("")
-        self.label_last_refresh.setText("Calling API now...")
+        self.label_last_refresh.setText(tr("status.refreshing"))
 
         try:
             stations = refresh_for_location(
@@ -182,13 +187,13 @@ class MainWindow(QMainWindow):
             )
 
         except TankerkonigError as e:
-            self.label_error.setText(f"Error: {e}")
-            self.label_last_refresh.setText("Last Call: failed")
+            self.label_error.setText(f"{e}")
+            self.label_last_refresh.setText(tr("status.last_refresh_failed"))
             return
 
         self._last_refresh = datetime.now()
         self.label_last_refresh.setText(
-            f"Last Call: {self._last_refresh.strftime('%H:%M Uhr')}"
+            tr("status.last_refresh", time=self._last_refresh.strftime('%H:%M Uhr'))
         )
         self.refresh_timer.start(self._next_interval_ms())
         self._update_next_refresh_label()
@@ -209,7 +214,7 @@ class MainWindow(QMainWindow):
         if self._last_refresh is None:
             # No API call yet - deactivate the button at startup;
             self.btn_manual_refresh.setEnabled(False)
-            self.label_manual_hint.setText("Waiting for first API call...")
+            self.label_manual_hint.setText(tr("toolbar.waiting_first"))
             return
 
         elapsed_sec = (datetime.now() - self._last_refresh).total_seconds()
@@ -224,14 +229,10 @@ class MainWindow(QMainWindow):
             remaining_min = remaining_sec // 60
             remaining_s = remaining_sec % 60
             if remaining_min > 0:
-                self.label_manual_hint.setText(
-                    f"Available in {remaining_min} min"
-                )
+                self.label_manual_hint.setText(tr("toolbar.refresh_available_in", available_in_min=remaining_min))
 
             else:
-                self.label_manual_hint.setText(
-                    f"Available in {remaining_s} sec"
-                )
+                self.label_manual_hint.setText(tr("toolbar.refresh_available_in_sec", available_in_sec=remaining_s))
 
 
     def _on_manual_refresh(self):
@@ -250,20 +251,16 @@ class MainWindow(QMainWindow):
         """
         remaining_ms = self.refresh_timer.remainingTime()
         if remaining_ms <= 0:
-            self.label_next_refresh.setText("Next Call: Imminent")
+            self.label_next_refresh.setText(tr("status.next_refresh_soon"))
             return
 
         remaining_min = remaining_ms // 60_000
         remaining_sec = (remaining_ms % 60_000) // 1_000
         if remaining_min > 0:
-            self.label_next_refresh.setText(
-                f"Next Call: in {remaining_min} min"
-            )
+            self.label_next_refresh.setText(tr("status.next_refresh_min", mins=remaining_min))
 
         else:
-            self.label_next_refresh.setText(
-                f"Next Call: in {remaining_sec} sec"
-            )
+            self.label_next_refresh.setText(tr("status.next_refresh_sec", sec=remaining_sec))
 
 
     
@@ -272,8 +269,8 @@ class MainWindow(QMainWindow):
     # ---------------------------------------------------------------------------------------------------
     def _apply_theme(self, theme: str):
         self._theme = theme
-        stylesheet = styles.LIGHT if theme == "light" else styles.DARK
-        QApplication.instance().setStyleSheet(stylesheet)
+        app_settings.theme = theme
+        apply_theme(theme)
         self.tab_stats.set_theme(theme == "dark")
         self.tab_map.set_theme(theme == "dark")
 
@@ -282,6 +279,20 @@ class MainWindow(QMainWindow):
     # ---------------------------------------------------------------------------------------------------
     # Slots;
     # ---------------------------------------------------------------------------------------------------
+    def retranslate(self):
+        """
+        Update the UI texts after a language change.
+        """
+        self.setWindowTitle(tr("app.title"))
+        self.tabs.setTabText(0, tr("tabs.map"))
+        self.tabs.setTabText(1, tr("tabs.prices"))
+        self.tabs.setTabText(2, tr("tabs.stats"))
+        self.tabs.setTabText(3, tr("tabs.settings"))
+        self.btn_manual_refresh.setText(tr("toolbar.refresh_now"))
+        self._update_manual_refresh_button()
+        self._update_next_refresh_label()
+
+
     def _on_settings_changed(self, theme: str, interval_min: int):
         """
         Reacts to changes in the settings tab.
@@ -291,6 +302,7 @@ class MainWindow(QMainWindow):
         new_interval_ms = interval_min * 60 * 1_000
         if new_interval_ms != self._internal_ms:
             self._internal_ms = new_interval_ms
+            app_settings.refresh_interval_min = interval_min
             self._restart_timer()
             self._update_next_refresh_label()
 

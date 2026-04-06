@@ -1,246 +1,109 @@
 """
 styles.py - Stylesheets for Benzintracker.
 
-Light and Dark stylesheets for the whole application.
-It's being applied at start and the theme-toggle.
+Native Styling via QApplication.setStyle("fusion") + QPalette.
+
+Fusion is a Qt-nativ, cross-platform consistent and supports QPalette completely.
+The Stylesheet only touches classes outside of QPalette (Error and status labels).
+"""
+from PySide6.QtGui import QPalette, QColor
+from PySide6.QtWidgets import QApplication
+
+
+_LIGHT = {
+    "window":          "#f5f5f5",
+    "window_text":     "#1a1a1a",
+    "base":            "#ffffff",
+    "alt_base":        "#f0f0f0",
+    "text":            "#1a1a1a",
+    "button":          "#e0e0e0",
+    "button_text":     "#1a1a1a",
+    "highlight":       "#2196F3",
+    "highlight_text":  "#ffffff",
+    "link":            "#1976d2",
+    "mid":             "#c0c0c0",
+    "midlight":        "#e8e8e8",
+    "dark":            "#a0a0a0",
+    "shadow":          "#787878",
+    "tooltip_base":    "#fffde7",
+    "tooltip_text":    "#1a1a1a",
+    "placeholder":     "#9e9e9e",
+}
+ 
+_DARK = {
+    "window":          "#1e1e1e",
+    "window_text":     "#e0e0e0",
+    "base":            "#252525",
+    "alt_base":        "#2a2a2a",
+    "text":            "#e0e0e0",
+    "button":          "#2d2d2d",
+    "button_text":     "#e0e0e0",
+    "highlight":       "#1976d2",
+    "highlight_text":  "#ffffff",
+    "link":            "#42a5f5",
+    "mid":             "#3a3a3a",
+    "midlight":        "#333333",
+    "dark":            "#141414",
+    "shadow":          "#0a0a0a",
+    "tooltip_base":    "#2d2d2d",
+    "tooltip_text":    "#e0e0e0",
+    "placeholder":     "#757575",
+}
+
+
+def _build_palette(tokens: dict) -> QPalette:
+    p = QPalette()
+
+    p.setColor(QPalette.ColorRole.Window,           QColor(tokens["window"]))
+    p.setColor(QPalette.ColorRole.WindowText,       QColor(tokens["window_text"]))
+    p.setColor(QPalette.ColorRole.Base,             QColor(tokens["base"]))
+    p.setColor(QPalette.ColorRole.AlternateBase,    QColor(tokens["alt_base"]))
+    p.setColor(QPalette.ColorRole.Text,             QColor(tokens["text"]))
+    p.setColor(QPalette.ColorRole.Button,           QColor(tokens["button"]))
+    p.setColor(QPalette.ColorRole.ButtonText,       QColor(tokens["button_text"]))
+    p.setColor(QPalette.ColorRole.Highlight,        QColor(tokens["highlight"]))
+    p.setColor(QPalette.ColorRole.HighlightedText,  QColor(tokens["highlight_text"]))
+    p.setColor(QPalette.ColorRole.Link,             QColor(tokens["link"]))
+    p.setColor(QPalette.ColorRole.Mid,              QColor(tokens["mid"]))
+    p.setColor(QPalette.ColorRole.Midlight,         QColor(tokens["midlight"]))
+    p.setColor(QPalette.ColorRole.Dark,             QColor(tokens["dark"]))
+    p.setColor(QPalette.ColorRole.Shadow,           QColor(tokens["shadow"]))
+    p.setColor(QPalette.ColorRole.ToolTipBase,      QColor(tokens["tooltip_base"]))
+    p.setColor(QPalette.ColorRole.ToolTipText,      QColor(tokens["tooltip_text"]))
+    p.setColor(QPalette.ColorRole.PlaceholderText,  QColor(tokens["placeholder"]))
+
+    # Disabled group: dimmed variants;
+    for role, key in [
+        (QPalette.ColorRole.WindowText,      "mid"),
+        (QPalette.ColorRole.Text,            "mid"),
+        (QPalette.ColorRole.ButtonText,      "mid")
+    ]:
+        p.setColor(QPalette.ColorGroup.Disabled, role, QColor(tokens[key]))
+
+    return p
+
+
+PALETTE_LIGHT = _build_palette(_LIGHT)
+PALETTE_DARK = _build_palette(_DARK)
+
+# Minimal stylesheet for semantic classes which QPalette does not cover;
+SEMANTIC_STYLESHEET = """
+    QLabel#label_error       { color: #e53935; font-size: 11px; }
+    QLabel#label_status      { color: palette(mid); font-size: 11px; }
+    QToolBar                 { border: none; padding: 4px 8px; spacing: 8px; }
+    QStatusBar               { font-size: 11px; }
 """
 
-LIGHT = """
-    QMainWindow, QWidget {
-        background-color: #f5f5f5;
-        color: #1a1a1a;
-        font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-        font-size: 13px;
-    }
 
-    QTabWidget::pane {
-        border: 1px solid #d0d0d0;
-        background: #ffffff;
-        border-radius: 4px;
-    }
+def apply_theme(theme: str):
+    """
+    Apply fusion style + QPalette + minimal stylesheet.
+    Must be called AFTER QApplication creation.
 
-    QTabBar::tab {
-        background: #e0e0e0;
-        color: #444;
-        padding: 8px 20px;
-        margin-right: 2px;
-        border-top-left-radius: 4px;
-        border-top-right-radius: 4px;
-    }
-
-    QTabBar::tab:selected {
-        background: #ffffff;
-        color: #1a1a1a;
-        font-weight: bold;
-        border-bottom: 2px solid #2196F3;
-    }
-
-    QTabBar::tab:hover:!selected { background: #ebebeb; }
-
-    QTableWidget {
-        background: #ffffff;
-        alternate-background-color: #f9f9f9;
-        gridline-color: #e0e0e0;
-        border: 1px solid #d0d0d0;
-    }
-
-    QHeaderView::section {
-        background: #eeeeee;
-        color: #333;
-        padding: 6px;
-        border: none;
-        border-right: 1px solid #d0d0d0;
-        font-weight: bold;
-    }
-
-    QPushButton {
-        background-color: #2196F3;
-        color: white;
-        border: none;
-        padding: 7px 16px;
-        border-radius: 4px;
-        font-weight: bold;
-    }
-
-    QPushButton:hover { background-color: #1e88e5; }
-    QPushButton:pressed { background-color: #1565c0; }
-    QPushButton:disabled {background-color: #bdbdbd; color: #757575; }
-
-    QPushButton#btn_secondary {
-        background-color: transparent;
-        color: #2196F3;
-        border: 1px solid #2196F3;
-    }
-    QPushButton#btn_secondary:hover { background-color: #e3f2fd; }
-
-    QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
-        background: #ffffff;
-        border: 1px solid #bdbdbd;
-        border-radius: 4px;
-        padding: 5px 8px;
-    }
-    QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus { border-color: #2196F3; }
-
-    QLabel#label_status { color: #555; font-size: 11px; }
-    QLabel#label_error { color: #e53935; font-size: 11px; }
-
-    QStatusBar {
-        background: #eeeeee;
-        color: #555;
-        font-size: 11px;
-    }
-
-    QSpinBox::up-button, QDoubleSpinBox::up-button {
-        subcontrol-origin: border;
-        subcontrol-position: top right;
-        width: 18px;
-        border-left: 1px solid #bdbdbd;
-        border-bottom: 1px solid #bdbdbd;
-        border-top-right-radius: 4px;
-        background: #f0f0f0;
-    }
-    QSpinBox::down-button, QDoubleSpinBox::down-button {
-        subcontrol-origin: border;
-        subcontrol-position: bottom right;
-        width: 18px;
-        border-left: 1px solid #bdbdbd;
-        border-top: 1px solid #bdbdbd;
-        border-bottom-right-radius: 4px;
-        background: #f0f0f0;
-    }
-    QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
-    QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
-        background: #e0e0e0;
-    }
-    QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
-        image: none;
-        width: 0; height: 0;
-        border-left: 4px solid transparent;
-        border-right: 4px solid transparent;
-        border-bottom: 5px solid #555;
-    }
-    QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
-        image: none;
-        width: 0; height: 0;
-        border-left: 4px solid transparent;
-        border-right: 4px solid transparent;
-        border-top: 5px solid #555;
-    }
-"""
-
-DARK = """
-    QMainWindow, QWidget {
-        background-color: #1e1e1e;
-        color: #e0e0e0;
-        font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-        font-size: 13px;
-    }
- 
-    QTabWidget::pane {
-        border: 1px solid #3a3a3a;
-        background: #252525;
-        border-radius: 4px;
-    }
-    QTabBar::tab {
-        background: #2d2d2d;
-        color: #aaa;
-        padding: 8px 20px;
-        margin-right: 2px;
-        border-top-left-radius: 4px;
-        border-top-right-radius: 4px;
-    }
-    QTabBar::tab:selected {
-        background: #252525;
-        color: #e0e0e0;
-        font-weight: bold;
-        border-bottom: 2px solid #42a5f5;
-    }
-    QTabBar::tab:hover:!selected { background: #333333; }
- 
-    QTableWidget {
-        background: #252525;
-        alternate-background-color: #2a2a2a;
-        gridline-color: #3a3a3a;
-        border: 1px solid #3a3a3a;
-        color: #e0e0e0;
-    }
-    QHeaderView::section {
-        background: #2d2d2d;
-        color: #bbb;
-        padding: 6px;
-        border: none;
-        border-right: 1px solid #3a3a3a;
-        font-weight: bold;
-    }
- 
-    QPushButton {
-        background-color: #1976d2;
-        color: white;
-        border: none;
-        padding: 7px 16px;
-        border-radius: 4px;
-        font-weight: bold;
-    }
-    QPushButton:hover    { background-color: #1e88e5; }
-    QPushButton:pressed  { background-color: #0d47a1; }
-    QPushButton:disabled { background-color: #424242; color: #757575; }
- 
-    QPushButton#btn_secondary {
-        background-color: transparent;
-        color: #42a5f5;
-        border: 1px solid #42a5f5;
-    }
-    QPushButton#btn_secondary:hover { background-color: #1a2e45; }
- 
-    QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
-        background: #2d2d2d;
-        border: 1px solid #4a4a4a;
-        border-radius: 4px;
-        padding: 5px 8px;
-        color: #e0e0e0;
-    }
-    QLineEdit:focus, QComboBox:focus,
-    QSpinBox:focus, QDoubleSpinBox:focus { border-color: #42a5f5; }
- 
-    QLabel#label_status { color: #aaa; font-size: 11px; }
-    QLabel#label_error  { color: #ef5350; font-size: 11px; }
- 
-    QStatusBar { background: #252525; color: #aaa; font-size: 11px; }
-
-    QSpinBox::up-button, QDoubleSpinBox::up-button {
-        subcontrol-origin: border;
-        subcontrol-position: top right;
-        width: 18px;
-        border-left: 1px solid #4a4a4a;
-        border-bottom: 1px solid #4a4a4a;
-        border-top-right-radius: 4px;
-        background: #3a3a3a;
-    }
-    QSpinBox::down-button, QDoubleSpinBox::down-button {
-        subcontrol-origin: border;
-        subcontrol-position: bottom right;
-        width: 18px;
-        border-left: 1px solid #4a4a4a;
-        border-top: 1px solid #4a4a4a;
-        border-bottom-right-radius: 4px;
-        background: #3a3a3a;
-    }
-    QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
-    QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {
-        background: #444;
-    }
-    QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
-        image: none;
-        width: 0; height: 0;
-        border-left: 4px solid transparent;
-        border-right: 4px solid transparent;
-        border-bottom: 5px solid #ccc;
-    }
-    QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
-        image: none;
-        width: 0; height: 0;
-        border-left: 4px solid transparent;
-        border-right: 4px solid transparent;
-        border-top: 5px solid #ccc;
-    }
-"""
+    Args:
+        theme: "light" or "dark"
+    """
+    app = QApplication.instance()
+    app.setStyle("fusion")
+    app.setPalette(PALETTE_LIGHT if theme == "light" else PALETTE_DARK)
+    app.setStyleSheet(SEMANTIC_STYLESHEET)

@@ -22,6 +22,7 @@ from benzintracker.api.tankerkonig import TankerkonigClient, TankerkonigError
 from benzintracker.database import models
 from benzintracker import config
 from benzintracker.settings import app_settings
+from benzintracker.translator import tr, translator
 
 
 class SettingsTab(QWidget):
@@ -32,6 +33,7 @@ class SettingsTab(QWidget):
         self._current_theme = app_settings.theme or "light"
         self._build_ui()
         self._load_settings()
+        translator.language_changed.connect(self.retranslate)
 
 
 
@@ -46,27 +48,29 @@ class SettingsTab(QWidget):
         root.addWidget(self._build_location_group())
         root.addWidget(self._build_refresh_group())
         root.addWidget(self._build_theme_group())
+        root.addWidget(self._build_language_group())
+        root.addWidget(self._build_danger_group())
         root.addStretch()
 
 
     def _build_api_group(self) -> QGroupBox:
-        box = QGroupBox("API-Key")
+        box = QGroupBox(tr("settings.group_api"))
 
         root = QVBoxLayout(box)
         row = QHBoxLayout(box)
 
         self.input_api_key = QLineEdit()
         self.input_api_key.setEchoMode(QLineEdit.Password)
-        self.input_api_key.setPlaceholderText("Enter Tankerkönig API-KEY...")
+        self.input_api_key.setPlaceholderText(tr("settings.api_placeholder"))
 
-        self.btn_validate = QPushButton("Check")
+        self.btn_validate = QPushButton(tr("settings.btn_validate"))
         self.btn_validate.setObjectName("btn_secondary")
         self.btn_validate.clicked.connect(self._validate_api_key)
 
-        self.btn_save_key = QPushButton("Save")
+        self.btn_save_key = QPushButton(tr("settings.btn_save_key"))
         self.btn_save_key.clicked.connect(self._save_api_key)
 
-        self.btn_delete_key = QPushButton("Remove")
+        self.btn_delete_key = QPushButton(tr("settings.btn_delete_key"))
         self.btn_delete_key.setObjectName("btn_secondary")
         self.btn_delete_key.clicked.connect(self._delete_api_key)
 
@@ -79,7 +83,7 @@ class SettingsTab(QWidget):
         self.label_key_status.setObjectName("label_status")
 
         self.label_keyring_hint = QLabel(
-            "No Keyring available - API-Key only saved for this one session."
+            tr("settings.no_keyring")
             if not app_settings.keyring_available() else ""
         )
         self.label_keyring_hint.setObjectName("label_error")
@@ -92,7 +96,7 @@ class SettingsTab(QWidget):
 
 
     def _build_location_group(self) -> QGroupBox:
-        box = QGroupBox("Location")
+        box = QGroupBox(tr("settings.group_location"))
         form = QFormLayout(box)
         form.setSpacing(10)
 
@@ -101,11 +105,11 @@ class SettingsTab(QWidget):
         self.combo_locations.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self._refresh_location_combo()
 
-        self.btn_set_default = QPushButton("Set as Default")
+        self.btn_set_default = QPushButton(tr("settings.btn_set_default"))
         self.btn_set_default.setObjectName("btn_secondary")
         self.btn_set_default.clicked.connect(self._set_default_location)
 
-        self.btn_delete_loc = QPushButton("Delete")
+        self.btn_delete_loc = QPushButton(tr("settings.btn_delete_loc"))
         self.btn_delete_loc.setObjectName("btn_secondary")
         self.btn_delete_loc.clicked.connect(self._delete_location)
 
@@ -114,14 +118,14 @@ class SettingsTab(QWidget):
         combo_row.addWidget(self.btn_delete_loc)
 
         self.input_loc_name = QLineEdit()
-        self.input_loc_name.setPlaceholderText("i.e. Home")
+        self.input_loc_name.setPlaceholderText(tr("settings.loc_name_placeholder"))
 
         self.input_lat = QLineEdit()
-        self.input_lat.setPlaceholderText("i.e. 52.520008")
+        self.input_lat.setPlaceholderText(tr("settings.loc_lat_placeholder"))
         self.input_lat.setValidator(QDoubleValidator(-90.0, 90.0, 6))
 
         self.input_lng = QLineEdit()
-        self.input_lng.setPlaceholderText("i.e. 13.404954")
+        self.input_lng.setPlaceholderText(tr("settings.loc_lng_placeholder"))
         self.input_lng.setValidator(QDoubleValidator(-180.0, 180.0, 6))
 
         self.input_radius = QDoubleSpinBox()
@@ -131,34 +135,60 @@ class SettingsTab(QWidget):
         self.input_radius.setValue(config.DEFAULT_RADIUS_KM)
         self.input_radius.setMinimumWidth(100)
 
-        self.btn_save_loc = QPushButton("Save new Location")
+        self.btn_save_loc = QPushButton(tr("settings.btn_save_loc"))
         self.btn_save_loc.clicked.connect(self._save_location)
 
-        form.addRow("Saved Location:", combo_row)
+        form.addRow(tr("settings.label_saved_locations"), combo_row)
         form.addRow(QLabel(""))
-        form.addRow("Name:", self.input_loc_name)
-        form.addRow("Latitude:", self.input_lat)
-        form.addRow("Longitude:", self.input_lng)
-        form.addRow("Radius:", self.input_radius)
+        form.addRow(tr("settings.label_name"), self.input_loc_name)
+        form.addRow(tr("settings.label_lat"), self.input_lat)
+        form.addRow(tr("settings.label_lng"), self.input_lng)
+        form.addRow(tr("settings.label_radius"), self.input_radius)
         form.addRow("", self.btn_save_loc)
 
         return box
 
 
-    def _build_danger_group(self) -> QGroupBox:
-        box = QGroupBox("Database")
+    def _build_language_group(self) -> QGroupBox:
+        box = QGroupBox(tr("settings.group_language"))
         layout = QHBoxLayout(box)
 
-        self.btn_reset_db = QPushButton("Reset Database")
-        self.btn_reset_db.setStyleSheet(
-            "QPushButton { background-color: #e53935; color: white; font-weight: bold; "
-            "border: none; padding: 7px 16px; border-radius: 4px; }"
-            "QPushButton:hover { background-color: #c62828; }"
-            "QPushButton:pressed { background-color: #b71c1c; }"
-        )
+        self.label_language = QLabel(tr("settings.label_language"))
+        self.combo_language = QComboBox()
+        for locale, name in translator.available_languages():
+            self.combo_language.addItem(name, userData=locale)
+
+        # Set current locale;
+        current = translator.current_locale
+        idx = self.combo_language.findData(current)
+        if idx >= 0: self.combo_language.setCurrentIndex(idx)
+
+        self.combo_language.currentIndexChanged.connect(self._on_language_changed)
+
+        layout.addWidget(self.label_language)
+        layout.addWidget(self.combo_language)
+        layout.addStretch()
+
+        return box
+
+
+    def _build_danger_group(self) -> QGroupBox:
+        box = QGroupBox(tr("settings.group_database"))
+        layout = QHBoxLayout(box)
+
+        self.btn_reset_db = QPushButton(tr("settings.btn_reset_db"))
+
+        # Danger colors above the palette instead of hard CSS;
+        from PySide6.QtGui import QPalette, QColor
+
+        danger_palette = self.btn_reset_db.palette()
+        danger_palette.setColor(QPalette.ColorRole.Button,     QColor("#e53935"))
+        danger_palette.setColor(QPalette.ColorRole.ButtonText, QColor("#ffffff"))
+        self.btn_reset_db.setPalette(danger_palette)
+        self.btn_reset_db.setAutoFillBackground(True)
         self.btn_reset_db.clicked.connect(self._reset_database)
 
-        label = QLabel("Delete all saved prices, stations and locations.")
+        label = QLabel(tr("settings.reset_db_label"))
         label.setObjectName("label_status")
 
         layout.addWidget(self.btn_reset_db)
@@ -169,22 +199,22 @@ class SettingsTab(QWidget):
 
 
     def _build_refresh_group(self) -> QGroupBox:
-        box = QGroupBox("Refreshing Interval")
+        box = QGroupBox(tr("settings.group_refresh"))
         layout = QHBoxLayout(box)
 
         self.spin_interval = QSpinBox()
         self.spin_interval.setRange(5, 120)
         self.spin_interval.setSingleStep(5)
-        self.spin_interval.setSuffix(" Minutes")
+        self.spin_interval.setSuffix(tr("settings.interval_suffix"))
         self.spin_interval.setValue(
             app_settings.refresh_interval_min or
             config.REFRESH_INTERVAL_MIN
         )
 
-        btn_apply = QPushButton("Apply")
+        btn_apply = QPushButton(tr("settings.btn_apply"))
         btn_apply.clicked.connect(self._apply_interval)
 
-        layout.addWidget(QLabel("Interval:"))
+        layout.addWidget(QLabel(tr("settings.label_interval")))
         layout.addWidget(self.spin_interval)
         layout.addWidget(btn_apply)
         layout.addStretch()
@@ -193,18 +223,18 @@ class SettingsTab(QWidget):
 
 
     def _build_theme_group(self) -> QGroupBox:
-        box = QGroupBox("Design")
+        box = QGroupBox(tr("settings.group_theme"))
         layout = QHBoxLayout(box)
 
-        self.btn_ligth = QPushButton("⛅ Light")
-        self.btn_ligth.setObjectName("btn_secondary")
-        self.btn_ligth.clicked.connect(lambda: self._set_theme("light"))
+        self.btn_light = QPushButton(tr("settings.btn_light"))
+        self.btn_light.setObjectName("btn_secondary")
+        self.btn_light.clicked.connect(lambda: self._set_theme("light"))
 
-        self.btn_dark = QPushButton("🌙 Dark")
+        self.btn_dark = QPushButton(tr("settings.btn_dark"))
         self.btn_dark.setObjectName("btn_secondary")
         self.btn_dark.clicked.connect(lambda: self._set_theme("dark"))
 
-        layout.addWidget(self.btn_ligth)
+        layout.addWidget(self.btn_light)
         layout.addWidget(self.btn_dark)
         layout.addStretch()
 
@@ -218,15 +248,15 @@ class SettingsTab(QWidget):
     def _validate_api_key(self):
         key = self.input_api_key.text().strip()
         if not key:
-            self.label_key_status.setText("Enter first an API-Key.")
+            self.label_key_status.setText(tr("settings.key_empty"))
             return
 
         self.btn_validate.setEnabled(False)
-        self.label_key_status.setText("Checking...")
+        self.label_key_status.setText(tr("settings.key_checking"))
 
         client = TankerkonigClient(api_key=key)
-        if client.validate_api_key(): self.label_key_status.setText("✅ API-Key is valid.")
-        else: self.label_key_status.setText("❌ API-Key is invalid or no connection.")
+        if client.validate_api_key(): self.label_key_status.setText(tr("settings.key_valid"))
+        else: self.label_key_status.setText(tr("settings.key_invalid"))
 
         self.btn_validate.setEnabled(True)
 
@@ -240,22 +270,22 @@ class SettingsTab(QWidget):
 
         app_settings.api_key = key
         if app_settings.keyring_available():
-            self.label_key_status.setText("✅ API-Key safely stored in the systems pwd storage.")
+            self.label_key_status.setText(tr("settings.key_saved_keyring"))
         
         else:
-            self.label_key_status.setText("✅ API-Key saved (only this session).")
+            self.label_key_status.setText(tr("settings.key_saved_session"))
 
 
     def _delete_api_key(self):
         app_settings.delete_api_key()
         self.input_api_key.clear()
-        self.label_key_status.setText("API-Key removed.")
+        self.label_key_status.setText(tr("settings.key_deleted"))
 
 
     def _save_location(self):
         name = self.input_loc_name.text().strip()
         if not name:
-            QMessageBox.warning(self, "Location", "Please add a name.")
+            QMessageBox.warning(self, tr("settings.loc_title"), tr("settings.loc_name_required"))
             return
 
         try:
@@ -263,7 +293,7 @@ class SettingsTab(QWidget):
             lng = float(self.input_lng.text().replace(",", "."))
 
         except ValueError:
-            QMessageBox.warning(self, "Location", "Enter valid coordinates.")
+            QMessageBox.warning(self, tr("settings.group_location"), tr("settings.loc_coords_invalid"))
             return
 
         models.save_location(
@@ -292,9 +322,8 @@ class SettingsTab(QWidget):
             self.input_radius.setValue(loc["radius_km"])
 
         QMessageBox.information(
-            self, "Location",
-            f"'{self.combo_locations.currentText()}' was set as the default location. "
-            "With the next Refresh the data for the new location is retrieved."
+            self, tr("settings.loc_title"),
+            tr("settings.loc_set_default_msg", name=self.combo_locations.currentText())
         )
 
 
@@ -331,9 +360,8 @@ class SettingsTab(QWidget):
         """
         reply = QMessageBox.warning(
             self,
-            "Reset Database",
-            "ALL data will be deleted. Are you sure?\n\n"
-            "This cannot be reversed.",
+            tr("settings.reset_db_title"),
+            tr("settings.reset_db_confirm"),
             QMessageBox.Yes | QMessageBox.Cancel,
             QMessageBox.Cancel
         )
@@ -347,9 +375,42 @@ class SettingsTab(QWidget):
         self.input_radius.setValue(5.0)
 
         QMessageBox.information(
-            self, "Reset Database",
-            "All data was successfully deleted."
+            self, tr("settings.reset_db_title"),
+            tr("settings.reset_db_success")
         )
+
+    def retranslate(self):
+        """
+        Updates all texts after locale change.
+        """
+        # GroupBox-Titel
+        for box, key in zip(
+            self.findChildren(__import__("PySide6.QtWidgets", fromlist=["QGroupBox"]).QGroupBox),
+            ["settings.group_api", "settings.group_location", "settings.group_refresh",
+             "settings.group_theme", "settings.group_language", "settings.group_database"]
+        ):
+            box.setTitle(tr(key))
+
+        self.btn_validate.setText(tr("settings.btn_validate"))
+        self.btn_save_key.setText(tr("settings.btn_save_key"))
+        self.btn_delete_key.setText(tr("settings.btn_delete_key"))
+        self.btn_set_default.setText(tr("settings.btn_set_default"))
+        self.btn_delete_loc.setText(tr("settings.btn_delete_loc"))
+        self.btn_save_loc.setText(tr("settings.btn_save_loc"))
+        self.btn_light.setText(tr("settings.btn_light"))
+        self.btn_dark.setText(tr("settings.btn_dark"))
+        self.btn_reset_db.setText(tr("settings.btn_reset_db"))
+        self.input_api_key.setPlaceholderText(tr("settings.api_placeholder"))
+        self.input_loc_name.setPlaceholderText(tr("settings.loc_name_placeholder"))
+        self.input_lat.setPlaceholderText(tr("settings.loc_lat_placeholder"))
+        self.input_lng.setPlaceholderText(tr("settings.loc_lng_placeholder"))
+ 
+
+    def _on_language_changed(self, index: int):
+        locale = self.combo_language.itemData(index)
+        if locale and locale != translator.current_locale:
+            translator.set_language(locale)
+            app_settings.language = locale
 
 
     def _load_settings(self):

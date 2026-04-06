@@ -321,7 +321,7 @@ class MapTab(QWidget):
         if station is None: return
 
         # Rerender the map with the specific station in the center;
-        self._render_map(center=[station["lat"], station["lng"]], zoom=8)
+        self._render_map(center=[station["lat"], station["lng"]], zoom=3)
 
 
     def set_theme(self, dark: bool):

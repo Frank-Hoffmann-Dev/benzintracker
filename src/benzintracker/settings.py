@@ -71,6 +71,17 @@ class AppSettings:
         self._q.setValue("refresh/interval_min", value)
         self._q.sync()
 
+
+    # Language;
+    @property
+    def language(self) -> str:
+        return self._q.value("ui/language", "")
+
+    @language.setter
+    def language(self, value: str):
+        self._q.setValue("ui/language", value)
+        self._q.sync()
+
         
     # API-Key (keyring);
     @property

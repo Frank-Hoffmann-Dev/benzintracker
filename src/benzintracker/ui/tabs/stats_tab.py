@@ -296,7 +296,7 @@ class DailyAverageChart(QWidget):
             )
 
         else:
-            dates = [datetime.strptime(r["day"], "%d.%m.%Y") for r in rows]
+            dates = [datetime.strptime(r["day"], "%Y-%m-%d") for r in rows]
             prices = [r["avg_price"] for r in rows]
             ax.plot(
                 dates, prices, color=LINE_COLORS[0],
