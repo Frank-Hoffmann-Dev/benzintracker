@@ -72,6 +72,17 @@ class AppSettings:
         self._q.sync()
 
 
+    # Database Path;
+    @property
+    def db_path(self) -> str:
+        return self._q.value("database/path", "")
+
+    @db_path.setter
+    def db_path(self, value: str):
+        self._q.setValue("database/path", value)
+        self._q.sync()
+
+
     # Language;
     @property
     def language(self) -> str:

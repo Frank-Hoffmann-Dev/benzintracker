@@ -8,15 +8,19 @@ Features:
     - Cheapest cell for each fuel type is highlighted
     - Click on a row centeres onto the station on the map (Signal)
 """
+import csv
+from datetime import datetime
+
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout,
-    QTableWidget, QTableWidgetItem, QHeaderView,
+    QWidget, QVBoxLayout, QHBoxLayout, QFileDialog,
+    QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
     QPushButton, QLabel, QCheckBox, QComboBox, QAbstractItemView
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont
 
 from benzintracker import config
+from benzintracker.translator import tr, translator
 
 
 # Rows of fuel type in order;
@@ -60,26 +64,36 @@ class TableTab(QWidget):
         layout = QHBoxLayout(bar)
         layout.setContentsMargins(0, 0, 0, 0)
 
-        self.check_open_only = QCheckBox("Only Opened")
+        self.check_open_only = QCheckBox(tr("table.open_only"))
         self.check_open_only.setChecked(False)
         self.check_open_only.stateChanged.connect(self._apply_filter)
 
         self.combo_sort_fuel = QComboBox()
-        self.combo_sort_fuel.addItem("Sort: Distance", userData="dist")
+        self.combo_sort_fuel.addItem(tr("table.sort_dist"), userData="dist")
         for key, label in FUEL_LABELS.items():
-            self.combo_sort_fuel.addItem(f"Sort: {label}", userData=key)
+            self.combo_sort_fuel.addItem(tr("table.sort_fuel", fuel=label), userData=key)
         self.combo_sort_fuel.currentIndexChanged.connect(self._apply_filter)
+
+        # Export;
+        self.btn_export = QPushButton(tr("table.btn_cvs_export"))
+        self.btn_export.setObjectName("btn_secondary")
+        self.btn_export.clicked.connect(self._export_csv)
 
         layout.addWidget(self.check_open_only)
         layout.addSpacing(16)
         layout.addWidget(self.combo_sort_fuel)
         layout.addStretch()
+        layout.addWidget(self.btn_export)
 
         return bar
 
     
     def _build_table(self) -> QTableWidget:
-        columns = ["Name", "Brand", "City", "Distance", "E5", "E10", "Diesel", "Status"]
+        columns = [
+            tr("table.col_name"), tr("table.col_brand"), tr("table.col_city"),
+            tr("table.col_dist"), tr("table.col_e5"), tr("table.col_e10"),
+            tr("table.col_diesel"), tr("table.col_status")
+        ]
         self.table = QTableWidget(0, len(columns))
         self.table.setHorizontalHeaderLabels(columns)
 
@@ -89,13 +103,12 @@ class TableTab(QWidget):
         header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)         # Brand;
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)         # City;
         header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)         # Distance;
-        for col in range(4, 7):                                              # Price Columns;
+        for col in range(4, 7):                                                         # Price Columns;
             header.setSectionResizeMode(col, QHeaderView.ResizeMode.ResizeToContents)
         header.setSectionResizeMode(7, QHeaderView.ResizeMode.ResizeToContents)         # Status;
 
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        #self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setSortingEnabled(True)
         self.table.verticalHeader().setVisible(False)
@@ -206,7 +219,7 @@ class TableTab(QWidget):
                 self.table.setItem(row_idx, col, item)
 
             # Status;
-            status_text = "Opened" if s["is_open"] else "Closed"
+            status_text = tr("table.open") if s["is_open"] else tr("table.closed")
             item_status = QTableWidgetItem(status_text)
             item_status.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             item_status.setForeground(
@@ -216,8 +229,8 @@ class TableTab(QWidget):
 
         self.table.setSortingEnabled(True)
         self.label_count.setText(
-            f"{len(stations)} Station(s)"
-            + (" (filtered)" if self.check_open_only.isChecked() else "")
+            tr("table.count", n=len(stations))
+            + (f" {tr("table.count_filtered")}" if self.check_open_only.isChecked() else "")
         )
 
 
@@ -231,6 +244,54 @@ class TableTab(QWidget):
     # ---------------------------------------------------------------------------------------------------
     # Slots;
     # ---------------------------------------------------------------------------------------------------
+    def _export_csv(self):
+        """
+        Export the currently visible table rows to CSV.
+        """
+        if self.table.rowCount() == 0:
+            QMessageBox.information(
+                self, tr("table.dlg_export_title"),
+                tr("table.dlg_export_message_no_data")
+            )
+            return
+
+        default_name = f"{tr("table.cvs_export_default_name")}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv"
+        path, _ = QFileDialog.getSaveFileName(
+            self, tr("table.csv_export_filedlg_title"), default_name,
+            tr("table.csv_export_filedlg_file_desc")
+        )
+
+        if not path: return
+
+        # Header;
+        headers = [
+            self.table.horizontalHeaderItem(col).text()
+            for col in range(self.table.columnCount())
+        ]
+
+        try:
+            with open(path, "w", newline="", encoding="utf-8-sig") as f:
+                # 'utf-8-sig': BOM for excel to open the file correctly;
+                writer = csv.writer(f, delimiter=";")
+                writer.writerow(headers)
+
+                for row in range(self.table.columnCount()):
+                    row_data = []
+                    for col in range(self.table.columnCount()):
+                        item = self.table.item(row, col)
+                        row_data.append(item.text() if item else "")
+
+                    writer.writerow(row_data)
+
+                QMessageBox.information(
+                    self, tr("table.dlg_export_title"),
+                    tr("table.dlg_export_message_success", path=path)
+                )
+
+        except OSError as e:
+            QMessageBox.critical(self, tr("table.dlg_export_failed_title"), str(e))
+
+
     def _on_row_selected(self):
         selected = self.table.selectedItems()
         if not selected: return

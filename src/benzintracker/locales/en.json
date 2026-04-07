@@ -51,7 +51,15 @@
     "table.sort_dist": "Sort: Distance",
     "table.sort_fuel": "Sort: {fuel}",
     "table.count": "{n} station(s)",
-    "table.count_filtered": "{n} station(s) (filtered)",
+    "table.count_filtered": "(filtered)",
+    "table.btn_cvs_export": "Export CSV",
+    "table.dlg_export_title": "Export",
+    "table.dlg_export_failed_title": "Export failed",
+    "table.dlg_export_message_no_data": "No data for the export available.",
+    "table.dlg_export_message_success": "Successfully exported:\n{path}",
+    "table.cvs_export_default_name": "petrol_prices",
+    "table.csv_export_filedlg_title": "Export CSV",
+    "table.csv_export_filedlg_file_desc": "CSV-Files (*.csv);;All Files (*)",
 
     "stats.tab_history": "Price history",
     "stats.tab_daily": "Daily average",
@@ -72,7 +80,15 @@
     "stats.legend_trend": "Trend",
     "stats.xlabel_avg_price": "Avg. {fuel} price (€)",
     "stats.hourly_cheapest": "Cheapest time\n{hour}:00",
+    "stats.hourly_locked_info": "This Chart needs at least {min_datapoints}. The Chart is generated automatically once enough data is collected.",
     "stats.hourly_locked": "{n} more data points needed ({have}/{need})",
+    "stats.hourly_locked_ax_text": "{n} until the Chart is available.",
+    "stats.export_dlg_title": "Export chart",
+    "stats.export_dlg_file_desc": "PNG-File (*.png);;PDF-File (*.pdf);;SVG-File (*.svg);;All Files (*)",
+    "stats.export_success_title": "Export successful",
+    "stats.export_success_message": "Saved:\n{path}",
+    "stats.export_failed_title": "Export failed",
+    "stats.btn_export": "Export",
 
     "settings.group_api": "API Key",
     "settings.api_placeholder": "Enter Tankerkönig API key …",
@@ -122,5 +138,6 @@
     "settings.reset_db_label": "Deletes all saved prices, stations and locations.",
     "settings.reset_db_title": "Reset database",
     "settings.reset_db_confirm": "Are you sure you want to delete ALL saved data?\n\nThis includes:\n  • All stations and price history\n  • All saved locations\n\nThis action cannot be undone.",
-    "settings.reset_db_success": "All data has been deleted successfully."
+    "settings.reset_db_success": "All data has been deleted successfully.",
+    "settings.db_browse_file_desc": "SQLite-Database (*.db);;All Files(*)"
 }

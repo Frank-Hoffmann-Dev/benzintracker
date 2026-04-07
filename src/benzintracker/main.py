@@ -9,8 +9,6 @@ from benzintracker.translator import translator
 
 
 def main():
-    init_db()
-
     app = QApplication(sys.argv)
     app.setApplicationName("BenzinTracker")
     app.setOrganizationName("benzintracker")
@@ -19,6 +17,8 @@ def main():
     from benzintracker.settings import app_settings
     from benzintracker.ui.styles import apply_theme
     from benzintracker import config
+
+    init_db()
 
     key = app_settings.api_key
     if key: config.API_KEY = key
@@ -30,7 +30,6 @@ def main():
 
     saved_theme = app_settings.theme
     apply_theme(saved_theme)
-    #app.setStyleSheet(styles.LIGHT if saved_theme == "light" else styles.DARK)
 
     window = MainWindow(initial_theme=saved_theme)
     window.show()

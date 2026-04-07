@@ -22,9 +22,11 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebEngineCore import QWebEngineUrlRequestInterceptor, QWebEngineProfile
+from PySide6.QtCore import QUrl
 
 from benzintracker.database import models
 from benzintracker import config
+from benzintracker.translator import tr, translator
 
 
 TOOLBAR_HEIGHT = 44
@@ -91,7 +93,7 @@ class MapTab(QWidget):
         toolbar_layout = QHBoxLayout(toolbar)
         toolbar_layout.setContentsMargins(8, 4, 8, 4)
 
-        self.label_count = QLabel("No Data")
+        self.label_count = QLabel(tr("map.no_data"))
         self.label_count.setObjectName("label_status")
 
         self.combo_fuel = QComboBox()
@@ -102,11 +104,11 @@ class MapTab(QWidget):
         )
         self.combo_fuel.currentTextChanged.connect(self._on_filter_changed)
 
-        btn_center = QPushButton("Centered")
+        btn_center = QPushButton(tr("map.btn_center"))
         btn_center.setObjectName("btn_secondary")
         btn_center.clicked.connect(self._center_map)
 
-        toolbar_layout.addWidget(QLabel("Display:"))
+        toolbar_layout.addWidget(QLabel(tr("map.display_label")))
         toolbar_layout.addWidget(self.combo_fuel)
         toolbar_layout.addStretch()
         toolbar_layout.addWidget(self.label_count)
@@ -148,7 +150,7 @@ class MapTab(QWidget):
 
             folium.Marker(
                 location=center,
-                tooltip="My Location",
+                tooltip=tr("map.my_location"),
                 popup=folium.Popup(
                     f"<b>{self._current_location['name']}</b>",
                     max_width=200
@@ -161,16 +163,15 @@ class MapTab(QWidget):
                 location=[MAP_CENTER[0], MAP_CENTER[1]], zoom_start=6, tiles=tiles
             )
         
-        self.web_view.setHtml(m._repr_html_())
+        self.web_view.setHtml(m._repr_html_(), QUrl("about:blank"))
 
 
     def _show_empty_map(self):
         """
         Show an empty map centered on Germany.
         """
-        tiles = self.TILES_DARK if self._dark else self.TILES_LIGHT
-        m = folium.Map(location=[MAP_CENTER[0], MAP_CENTER[1]], zoom_start=6, tiles=tiles)
-        self.web_view.setHtml(m._repr_html_())
+        self._current_location = models.get_default_location()
+        self._show_location_or_empty()
 
 
     def _render_map(self, center: list = None, zoom: int = 13):
@@ -198,7 +199,7 @@ class MapTab(QWidget):
         if self._current_location:
             folium.Marker(
                 location=center,
-                tooltip="My Location",
+                tooltip=tr("map.my_location"),
                 popup=folium.Popup(
                     f"<b>{self._current_location['name']}</b>", max_width=200
                 ),
@@ -229,7 +230,7 @@ class MapTab(QWidget):
             if display_price is not None:
                 tooltip = f"{s['name']} | {tooltip_fuel} {display_price:.3f} €"
             else:
-                tooltip = f"{s['name']} | No Price"
+                tooltip = f"{s['name']} | {tr("map.no_price")}"
 
             folium.Marker(
                 location=[s["lat"], s["lng"]],
@@ -243,10 +244,10 @@ class MapTab(QWidget):
             visible += 1
 
         # Update Statusbar;
-        self.label_count.setText(f"{visible} Station(s) displayed")
+        self.label_count.setText(tr("map.stations_displayed", n=visible))
 
         # Load HTML into WebView;
-        self.web_view.setHtml(m._repr_html_())
+        self.web_view.setHtml(m._repr_html_(), QUrl("about:blank"))
 
 
     def _build_popup_html(self, s: dict) -> str:
@@ -254,7 +255,7 @@ class MapTab(QWidget):
         Create the HTML for the marker popup.
         """
         brand = f" ({s['brand']})" if s.get("brand") else ""
-        status = "open" if s["is_open"] else "closed"
+        status = tr("map.station_open") if s["is_open"] else tr("map.station_closed")
         status_color = "#4caf50" if s["is_open"] else "#9e9e9e"
         dist = f"{s['dist']:.1f} km" if s.get("dist") else ""
 

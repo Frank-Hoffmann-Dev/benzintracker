@@ -31,12 +31,12 @@ from benzintracker.translator import tr, translator
 
 
 WINDOW_MIN_SIZE_WIDTH  = 1000
-WINDOW_MIN_SIZE_HEIGHT = 850 
+WINDOW_MIN_SIZE_HEIGHT = 720
 FIRST_CALL_DELAY = 500
 
 TIMER_REFRESH_LABEL = 10_000        # One Minute;
 JITTER_MAX_SEC = 180
-MIN_MANUAL_REFRESH_SEC = 300        # 5 Minutes;
+MIN_MANUAL_REFRESH_SEC = 120        # 1.5 Minutes;
 
 
 class MainWindow(QMainWindow):

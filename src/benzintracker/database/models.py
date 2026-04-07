@@ -67,6 +67,16 @@ def get_station_by_id(station_id: str) -> dict | None:
     return dict(row) if row else None
 
 
+def get_date_range(fuel_type: str) -> list[str]:
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT MIN(recorded_at), MAX(recorded_at) FROM prices WHERE fuel_type = ?",
+        (fuel_type,)
+    ).fetchone()
+    conn.close()
+
+    return row
+
 
 # ---------------------------------------------------------------------------------------------------
 # Prices;
@@ -200,6 +210,10 @@ def delete_location(location_id: int):
     conn.close()
 
 
+
+# ---------------------------------------------------------------------------------------------------
+# Database;
+# ---------------------------------------------------------------------------------------------------
 def reset_database() -> None:
     conn = get_connection()
     with conn:

@@ -10,13 +10,16 @@ Settings Tab with:
 Signals:
     settings_changed - triggers when user saves the settings. Main Window listens and applies changes.
 """
+import os
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QLineEdit, QPushButton, QSpinBox,
-    QDoubleSpinBox, QGroupBox, QComboBox, QMessageBox
+    QDoubleSpinBox, QGroupBox, QComboBox, QMessageBox,
+    QScrollArea, QFileDialog
 )
-from PySide6.QtGui import QDoubleValidator
-from PySide6.QtCore import Signal
+from PySide6.QtGui import QDoubleValidator, QPalette, QColor
+from PySide6.QtCore import Qt, Signal
 
 from benzintracker.api.tankerkonig import TankerkonigClient, TankerkonigError
 from benzintracker.database import models
@@ -41,7 +44,16 @@ class SettingsTab(QWidget):
     # Build UI;
     # ---------------------------------------------------------------------------------------------------
     def _build_ui(self):
-        root = QVBoxLayout(self)
+        # ScrollArea;
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+
+        # Inner Widget for all groups;
+        inner = QWidget()
+        root = QVBoxLayout(inner)
+        root.setContentsMargins(12, 12, 12, 12)
         root.setSpacing(16)
 
         root.addWidget(self._build_api_group())
@@ -49,17 +61,25 @@ class SettingsTab(QWidget):
         root.addWidget(self._build_refresh_group())
         root.addWidget(self._build_theme_group())
         root.addWidget(self._build_language_group())
-        root.addWidget(self._build_danger_group())
+        root.addWidget(self._build_database_group())
         root.addStretch()
+        inner.setLayout(root)
+
+        scroll.setWidget(inner)
+
+        # Outer layout;
+        outer = QVBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scroll)
+        self.setLayout(outer)
 
 
     def _build_api_group(self) -> QGroupBox:
         box = QGroupBox(tr("settings.group_api"))
-
         root = QVBoxLayout(box)
-        row = QHBoxLayout(box)
 
-        self.input_api_key = QLineEdit()
+        row = QHBoxLayout(box)
+        self.input_api_key = QLineEdit(box)
         self.input_api_key.setEchoMode(QLineEdit.Password)
         self.input_api_key.setPlaceholderText(tr("settings.api_placeholder"))
 
@@ -79,7 +99,7 @@ class SettingsTab(QWidget):
         row.addWidget(self.btn_save_key)
         row.addWidget(self.btn_delete_key)
 
-        self.label_key_status = QLabel("")
+        self.label_key_status = QLabel("", box)
         self.label_key_status.setObjectName("label_status")
 
         self.label_keyring_hint = QLabel(
@@ -101,7 +121,7 @@ class SettingsTab(QWidget):
         form.setSpacing(10)
 
         combo_row = QHBoxLayout()
-        self.combo_locations = QComboBox()
+        self.combo_locations = QComboBox(box)
         self.combo_locations.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self._refresh_location_combo()
 
@@ -117,25 +137,25 @@ class SettingsTab(QWidget):
         combo_row.addWidget(self.btn_set_default)
         combo_row.addWidget(self.btn_delete_loc)
 
-        self.input_loc_name = QLineEdit()
+        self.input_loc_name = QLineEdit(box)
         self.input_loc_name.setPlaceholderText(tr("settings.loc_name_placeholder"))
 
-        self.input_lat = QLineEdit()
+        self.input_lat = QLineEdit(box)
         self.input_lat.setPlaceholderText(tr("settings.loc_lat_placeholder"))
         self.input_lat.setValidator(QDoubleValidator(-90.0, 90.0, 6))
 
-        self.input_lng = QLineEdit()
+        self.input_lng = QLineEdit(box)
         self.input_lng.setPlaceholderText(tr("settings.loc_lng_placeholder"))
         self.input_lng.setValidator(QDoubleValidator(-180.0, 180.0, 6))
 
-        self.input_radius = QDoubleSpinBox()
+        self.input_radius = QDoubleSpinBox(box)
         self.input_radius.setRange(1.0, 25.0)
         self.input_radius.setSingleStep(0.5)
         self.input_radius.setSuffix(" km")
         self.input_radius.setValue(config.DEFAULT_RADIUS_KM)
         self.input_radius.setMinimumWidth(100)
 
-        self.btn_save_loc = QPushButton(tr("settings.btn_save_loc"))
+        self.btn_save_loc = QPushButton(tr("settings.btn_save_loc"), box)
         self.btn_save_loc.clicked.connect(self._save_location)
 
         form.addRow(tr("settings.label_saved_locations"), combo_row)
@@ -153,8 +173,8 @@ class SettingsTab(QWidget):
         box = QGroupBox(tr("settings.group_language"))
         layout = QHBoxLayout(box)
 
-        self.label_language = QLabel(tr("settings.label_language"))
-        self.combo_language = QComboBox()
+        self.label_language = QLabel(tr("settings.label_language"), box)
+        self.combo_language = QComboBox(box)
         for locale, name in translator.available_languages():
             self.combo_language.addItem(name, userData=locale)
 
@@ -172,28 +192,71 @@ class SettingsTab(QWidget):
         return box
 
 
-    def _build_danger_group(self) -> QGroupBox:
+    def _build_database_group(self) -> QGroupBox:
+        """
+        Group with the database path setting and reset-button.
+        A custom path can be set or chosen via file dialog.
+        After changing the database path, the application needs to be restarted.
+        """
         box = QGroupBox(tr("settings.group_database"))
-        layout = QHBoxLayout(box)
+        root = QVBoxLayout(box)
 
-        self.btn_reset_db = QPushButton(tr("settings.btn_reset_db"))
+        # DB Path;
+        form = QFormLayout()
+        form.setSpacing(8)
 
-        # Danger colors above the palette instead of hard CSS;
-        from PySide6.QtGui import QPalette, QColor
+        path_row = QHBoxLayout()
+        self.input_db_path = QLineEdit(box)
+        self.input_db_path.setPlaceholderText(config.DB_PATH)
+        self.input_db_path.setText(app_settings.db_path or config.DB_PATH)
+        self.input_db_path.setMinimumWidth(300)
+
+        self.btn_browse_db = QPushButton("...", box)
+        self.btn_browse_db.setFixedWidth(36)
+        self.btn_browse_db.setToolTip(tr("settings.db_browse_tooltip"))
+        self.btn_browse_db.clicked.connect(self._browse_db_path)
+
+        self.btn_save_db_path = QPushButton(tr("settings.btn_save_db_path"), box)
+        self.btn_save_db_path.clicked.connect(self._save_db_path)
+
+        path_row.addWidget(self.input_db_path, stretch=1)
+        path_row.addWidget(self.btn_browse_db)
+        path_row.addWidget(self.btn_save_db_path)
+
+        self.label_db_path_status = QLabel("", box)
+        self.label_db_path_status.setObjectName("label_status")
+
+        form.addRow(tr("settings.label_db_path"), path_row)
+        form.addRow("", self.label_db_path_status)
+        root.addLayout(form)
+
+        separator = QWidget(box)
+        separator.setFixedHeight(1)
+        separator.setAutoFillBackground(True)
+        sep_palette = separator.palette()
+        sep_palette.setColor(QPalette.ColorRole.Window, QColor(128, 128, 128, 80))
+        separator.setPalette(sep_palette)
+        root.addWidget(separator)
+
+        # Reset Button;
+        reset_row = QHBoxLayout()
+        self.btn_reset_db = QPushButton(tr("settings.btn_reset_db"), box)
 
         danger_palette = self.btn_reset_db.palette()
-        danger_palette.setColor(QPalette.ColorRole.Button,     QColor("#e53935"))
+        danger_palette.setColor(QPalette.ColorRole.Button, QColor("#e53935"))
         danger_palette.setColor(QPalette.ColorRole.ButtonText, QColor("#ffffff"))
+
         self.btn_reset_db.setPalette(danger_palette)
         self.btn_reset_db.setAutoFillBackground(True)
         self.btn_reset_db.clicked.connect(self._reset_database)
 
-        label = QLabel(tr("settings.reset_db_label"))
-        label.setObjectName("label_status")
+        self.label_reset_hint = QLabel(tr("settings.reset_db_label"), box)
+        self.label_reset_hint.setObjectName("label_status")
 
-        layout.addWidget(self.btn_reset_db)
-        layout.addWidget(label)
-        layout.addStretch()
+        reset_row.addWidget(self.btn_reset_db)
+        reset_row.addWidget(self.label_reset_hint)
+        reset_row.addStretch()
+        root.addLayout(reset_row)
 
         return box
 
@@ -202,7 +265,7 @@ class SettingsTab(QWidget):
         box = QGroupBox(tr("settings.group_refresh"))
         layout = QHBoxLayout(box)
 
-        self.spin_interval = QSpinBox()
+        self.spin_interval = QSpinBox(box)
         self.spin_interval.setRange(5, 120)
         self.spin_interval.setSingleStep(5)
         self.spin_interval.setSuffix(tr("settings.interval_suffix"))
@@ -211,10 +274,10 @@ class SettingsTab(QWidget):
             config.REFRESH_INTERVAL_MIN
         )
 
-        btn_apply = QPushButton(tr("settings.btn_apply"))
+        btn_apply = QPushButton(tr("settings.btn_apply"), box)
         btn_apply.clicked.connect(self._apply_interval)
 
-        layout.addWidget(QLabel(tr("settings.label_interval")))
+        layout.addWidget(QLabel(tr("settings.label_interval"), box))
         layout.addWidget(self.spin_interval)
         layout.addWidget(btn_apply)
         layout.addStretch()
@@ -226,11 +289,11 @@ class SettingsTab(QWidget):
         box = QGroupBox(tr("settings.group_theme"))
         layout = QHBoxLayout(box)
 
-        self.btn_light = QPushButton(tr("settings.btn_light"))
+        self.btn_light = QPushButton(tr("settings.btn_light"), box)
         self.btn_light.setObjectName("btn_secondary")
         self.btn_light.clicked.connect(lambda: self._set_theme("light"))
 
-        self.btn_dark = QPushButton(tr("settings.btn_dark"))
+        self.btn_dark = QPushButton(tr("settings.btn_dark"), box)
         self.btn_dark.setObjectName("btn_secondary")
         self.btn_dark.clicked.connect(lambda: self._set_theme("dark"))
 
@@ -338,19 +401,18 @@ class SettingsTab(QWidget):
     def _apply_interval(self):
         interval = self.spin_interval.value()
         self.settings_changed.emit(self._current_theme, interval)
-        app_settings.refresh_interval_min = interval
 
 
     def _set_theme(self, theme: str):
         self._current_theme = theme
         self.settings_changed.emit(theme, self.spin_interval.value())
-        app_settings.theme = theme
 
 
     def _refresh_location_combo(self):
         self.combo_locations.clear()
         for loc in models.get_all_locations():
-            label = f"{loc['name']} ({loc['lat']:.4f}, {loc['lng']:.4f})"
+            star = " ★" if loc["is_default"] else ""
+            label = f"{loc['name']}{star} ({loc['lat']:.4f}, {loc['lng']:.4f})"
             self.combo_locations.addItem(label, userData=loc["id"])
 
 
@@ -383,12 +445,15 @@ class SettingsTab(QWidget):
         """
         Updates all texts after locale change.
         """
-        # GroupBox-Titel
-        for box, key in zip(
-            self.findChildren(__import__("PySide6.QtWidgets", fromlist=["QGroupBox"]).QGroupBox),
-            ["settings.group_api", "settings.group_location", "settings.group_refresh",
-             "settings.group_theme", "settings.group_language", "settings.group_database"]
-        ):
+        from PySide6.QtWidgets import QGroupBox as GB
+
+        keys = [
+            "settings.group_api", "settings.group_location",
+            "settings.group_refresh", "settings.group_theme",
+            "settings.group_language", "settings.group_database",
+        ]
+
+        for box, key in zip(self.findChildren(GB), keys):
             box.setTitle(tr(key))
 
         self.btn_validate.setText(tr("settings.btn_validate"))
@@ -400,6 +465,7 @@ class SettingsTab(QWidget):
         self.btn_light.setText(tr("settings.btn_light"))
         self.btn_dark.setText(tr("settings.btn_dark"))
         self.btn_reset_db.setText(tr("settings.btn_reset_db"))
+        self.btn_save_db_path.setText(tr("settings.btn_save_db_path"))
         self.input_api_key.setPlaceholderText(tr("settings.api_placeholder"))
         self.input_loc_name.setPlaceholderText(tr("settings.loc_name_placeholder"))
         self.input_lat.setPlaceholderText(tr("settings.loc_lat_placeholder"))
@@ -413,11 +479,64 @@ class SettingsTab(QWidget):
             app_settings.language = locale
 
 
+    def _browse_db_path(self):
+        current = self.input_db_path.text() or config.DB_PATH
+        start_dir = os.path.dirname(current)
+
+        path, _ = QFileDialog.getSaveFileName(
+            self, tr("settings.db_browse_title"),
+            start_dir,
+            tr("settings.db_browse_file_desc")
+        )
+
+        if path: self.input_db_path.setText(os.path.normpath(path))
+
+    
+    def _save_db_path(self):
+        """
+        Save the new db path in QSettings.
+        The path will be used after restart.
+        """
+        raw = self.input_db_path.text().strip()
+        if not raw: return
+
+        path = os.path.normpath(raw)
+
+        # Check if the directory exists or create it;
+        db_dir = os.path.dirname(path)
+        if db_dir and not os.path.exists(db_dir):
+            reply = QMessageBox.question(
+                self, tr("settings.db_path_title"),
+                tr("settings.db_dir_create", path=db_dir),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Cancel
+            )
+
+            if reply != QMessageBox.StandardButton.Yes: return
+
+            try: os.makedirs(db_dir, exist_ok=True)
+            except OSError as e:
+                QMessageBox.critical(
+                    self, tr("settings.db_path_title"),
+                    tr("settings.db_dir_error", error=str(e))
+                )
+                return
+
+            app_settings.db_path = path
+            self.label_db_path_status.setText(tr("settings.db_path_saved"))
+
+
     def _load_settings(self):
         """
         Enter saved values at start.
         """
-        if config.API_KEY: self.input_api_key.setText(config.API_KEY)
+        key = app_settings.api_key
+        if key: self.input_api_key.setText(key)
+
+        self.spin_interval.setValue(app_settings.refresh_interval_min)
+
+        saved_path = app_settings.db_path
+        if saved_path: self.input_db_path.setText(saved_path)
 
         loc = models.get_default_location()
         if loc:
