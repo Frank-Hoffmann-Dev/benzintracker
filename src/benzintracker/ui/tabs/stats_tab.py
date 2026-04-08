@@ -56,9 +56,9 @@ FIGURE_EXPORT_DPI            = 150
 
 def _period_options() -> dict:
     return {
-        tr("stats.period_7"):        7,
-        tr("stats.period_30"):      30,
-        tr("stats.period_90"):      90,
+        tr("stats.period_7"):          7,
+        tr("stats.period_30"):        30,
+        tr("stats.period_90"):        90,
         tr("stats.period_all"):     3650
     }
 
@@ -223,7 +223,8 @@ class PriceHistoryChart(QWidget):
     def _build_ui(self):
         root = QVBoxLayout(self)
 
-        bar, self.combo_fuel, self.combo_period, btn_refresh, btn_export = _make_toolbar(with_period=True, with_export=True)
+        bar, self.combo_fuel, self.combo_period, btn_refresh, btn_export = \
+            _make_toolbar(with_period=True, with_export=True)
 
         btn_refresh.clicked.connect(self.refresh)
         btn_export.clicked.connect(lambda: self.canvas.export(self))
@@ -260,8 +261,8 @@ class PriceHistoryChart(QWidget):
         station_ids = (
             [item.data(Qt.ItemDataRole.UserRole) for item in sel]
             if sel else
-            [self.station_list.item(i).data(Qt.ItemDataRole.UserRole)]
-            for i in range(min(self.station_list.count(), 8))
+            [self.station_list.item(i).data(Qt.ItemDataRole.UserRole)
+            for i in range(min(self.station_list.count(), 8))]
         )
 
         self.canvas.clear()

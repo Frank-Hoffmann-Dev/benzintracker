@@ -30,13 +30,13 @@ from benzintracker.settings import app_settings
 from benzintracker.translator import tr, translator
 
 
-WINDOW_MIN_SIZE_WIDTH  = 1000
-WINDOW_MIN_SIZE_HEIGHT = 720
-FIRST_CALL_DELAY = 500
+WINDOW_MIN_SIZE_WIDTH       = 1000
+WINDOW_MIN_SIZE_HEIGHT      = 720
+FIRST_CALL_DELAY            = 500
 
-TIMER_REFRESH_LABEL = 10_000        # One Minute;
-JITTER_MAX_SEC = 180
-MIN_MANUAL_REFRESH_SEC = 120        # 1.5 Minutes;
+TIMER_REFRESH_LABEL         = 10_000     # One Minute;
+JITTER_MAX_SEC              = 180
+MIN_MANUAL_REFRESH_SEC      = 120        # 1.5 Minutes;
 
 
 class MainWindow(QMainWindow):
@@ -291,6 +291,10 @@ class MainWindow(QMainWindow):
         self.btn_manual_refresh.setText(tr("toolbar.refresh_now"))
         self._update_manual_refresh_button()
         self._update_next_refresh_label()
+
+        for tab in [self.tab_table, self.tab_stats, self.tab_settings]:
+            if hasattr(tab, "retranslate"):
+                tab.retranslate()
 
 
     def _on_settings_changed(self, theme: str, interval_min: int):

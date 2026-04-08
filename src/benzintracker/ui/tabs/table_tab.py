@@ -12,12 +12,12 @@ import csv
 from datetime import datetime
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFileDialog,
+    QWidget, QVBoxLayout, QHBoxLayout, QFileDialog, QApplication,
     QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox,
-    QPushButton, QLabel, QCheckBox, QComboBox, QAbstractItemView
+    QPushButton, QLabel, QCheckBox, QComboBox, QAbstractItemView,
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor, QFont, QPalette
 
 from benzintracker import config
 from benzintracker.translator import tr, translator
@@ -28,9 +28,20 @@ FUEL_COLS = ["e5", "e10", "diesel"]
 FUEL_LABELS = { "e5": "E5", "e10": "E10", "diesel": "Diesel" }
 
 # Highlight colors for cheapest price (agreeable with light / dark themes);
-COLOR_BEST = QColor("#c8e6c9")
 COLOR_OPEN = QColor("#4caf50")
 COLOR_CLOSE = QColor("#9e9e9e")
+
+
+def _color_best() -> QColor:
+    base = QApplication.instance().palette().color(QPalette.ColorRole.Base)
+    if base.lightness() < 128: return QColor("#1b5e20")
+    return QColor("#c8e6c9")
+
+
+def _text_on_best() -> QColor:
+    base = QApplication.instance().palette().color(QPalette.ColorRole.Base)
+    if base.lightness() < 128: return QColor("#a5d6a7")
+    return QColor("#1b5e20")
 
 
 class TableTab(QWidget):
@@ -43,6 +54,7 @@ class TableTab(QWidget):
         super().__init__(parent)
         self._stations: list[dict] = []
         self._build_ui()
+        translator.language_changed.connect(self.retranslate)
 
 
 
@@ -209,7 +221,8 @@ class TableTab(QWidget):
 
                     # Highlight cheapest price;
                     if fuel in best and price == best[fuel]:
-                        item.setBackground(COLOR_BEST)
+                        item.setBackground(_color_best())
+                        item.setForeground(_text_on_best())
                         item.setFont(bold_font)
 
                 else:
@@ -244,6 +257,28 @@ class TableTab(QWidget):
     # ---------------------------------------------------------------------------------------------------
     # Slots;
     # ---------------------------------------------------------------------------------------------------
+    def retranslate(self):
+        self.check_open_only.setText(tr("table.open_only"))
+        current_data = self.combo_sort_fuel.currentData()
+        self.combo_sort_fuel.blockSignals(True)
+        self.combo_sort_fuel.clear()
+        self.combo_sort_fuel.addItem(tr("table.sort_dist"), userData="dist")
+        for key, label in FUEL_LABELS.items():
+            self.combo_sort_fuel.addItem(tr("table.sort_fuel", fuel=label), userData=key)
+        
+        idx = self.combo_sort_fuel.findData(current_data)
+        self.combo_sort_fuel.setCurrentIndex(idx if idx >= 0 else 0)
+        self.combo_sort_fuel.blockSignals(False)
+        self.btn_export.setText(tr("table.btn_cvs_export"))
+
+        columns = [
+            tr("table.col_name"), tr("table.col_brand"), tr("table.col_city"),
+            tr("table.col_dist"), tr("table.col_e5"), tr("table.col_e10"),
+            tr("table.col_diesel"), tr("table.col_status")
+        ]
+        self.table.setHorizontalHeaderLabels(columns)
+
+
     def _export_csv(self):
         """
         Export the currently visible table rows to CSV.
@@ -275,7 +310,7 @@ class TableTab(QWidget):
                 writer = csv.writer(f, delimiter=";")
                 writer.writerow(headers)
 
-                for row in range(self.table.columnCount()):
+                for row in range(self.table.rowCount()):
                     row_data = []
                     for col in range(self.table.columnCount()):
                         item = self.table.item(row, col)

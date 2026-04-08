@@ -158,12 +158,18 @@ class SettingsTab(QWidget):
         self.btn_save_loc = QPushButton(tr("settings.btn_save_loc"), box)
         self.btn_save_loc.clicked.connect(self._save_location)
 
-        form.addRow(tr("settings.label_saved_locations"), combo_row)
+        self._lbl_saved_locations = QLabel(tr("settings.label_saved_locations"))
+        self._lbl_loc_name = QLabel(tr("settings.label_name"))
+        self._lbl_loc_lat = QLabel(tr("settings.label_lat"))
+        self._lbl_loc_lng = QLabel(tr("settings.label_lng"))
+        self._lbl_loc_radius = QLabel(tr("settings.label_radius"))
+
+        form.addRow(self._lbl_saved_locations, combo_row)
         form.addRow(QLabel(""))
-        form.addRow(tr("settings.label_name"), self.input_loc_name)
-        form.addRow(tr("settings.label_lat"), self.input_lat)
-        form.addRow(tr("settings.label_lng"), self.input_lng)
-        form.addRow(tr("settings.label_radius"), self.input_radius)
+        form.addRow(self._lbl_loc_name, self.input_loc_name)
+        form.addRow(self._lbl_loc_lat, self.input_lat)
+        form.addRow(self._lbl_loc_lng, self.input_lng)
+        form.addRow(self._lbl_loc_radius, self.input_radius)
         form.addRow("", self.btn_save_loc)
 
         return box
@@ -226,7 +232,8 @@ class SettingsTab(QWidget):
         self.label_db_path_status = QLabel("", box)
         self.label_db_path_status.setObjectName("label_status")
 
-        form.addRow(tr("settings.label_db_path"), path_row)
+        self._lbl_db_path = QLabel(tr("settings.label_db_path"))
+        form.addRow(self._lbl_db_path, path_row)
         form.addRow("", self.label_db_path_status)
         root.addLayout(form)
 
@@ -277,7 +284,8 @@ class SettingsTab(QWidget):
         btn_apply = QPushButton(tr("settings.btn_apply"), box)
         btn_apply.clicked.connect(self._apply_interval)
 
-        layout.addWidget(QLabel(tr("settings.label_interval"), box))
+        self._lbl_interval = QLabel(tr("settings.label_interval"))
+        layout.addWidget(self._lbl_interval)
         layout.addWidget(self.spin_interval)
         layout.addWidget(btn_apply)
         layout.addStretch()
@@ -456,6 +464,7 @@ class SettingsTab(QWidget):
         for box, key in zip(self.findChildren(GB), keys):
             box.setTitle(tr(key))
 
+        # Buttons;
         self.btn_validate.setText(tr("settings.btn_validate"))
         self.btn_save_key.setText(tr("settings.btn_save_key"))
         self.btn_delete_key.setText(tr("settings.btn_delete_key"))
@@ -466,10 +475,22 @@ class SettingsTab(QWidget):
         self.btn_dark.setText(tr("settings.btn_dark"))
         self.btn_reset_db.setText(tr("settings.btn_reset_db"))
         self.btn_save_db_path.setText(tr("settings.btn_save_db_path"))
+
+        # Placeholders;
         self.input_api_key.setPlaceholderText(tr("settings.api_placeholder"))
         self.input_loc_name.setPlaceholderText(tr("settings.loc_name_placeholder"))
         self.input_lat.setPlaceholderText(tr("settings.loc_lat_placeholder"))
         self.input_lng.setPlaceholderText(tr("settings.loc_lng_placeholder"))
+
+        # Form row labels;
+        self._lbl_saved_locations.setText(tr("settings.label_saved_locations"))
+        self._lbl_loc_name.setText(tr("settings.label_name"))
+        self._lbl_loc_lat.setText(tr("settings.label_lat"))
+        self._lbl_loc_lng.setText(tr("settings.label_lng"))
+        self._lbl_loc_radius.setText(tr("settings.label_radius"))
+        self._lbl_interval.setText(tr("settings.label_interval"))
+        self.label_language.setText(tr("settings.label_language"))
+        self._lbl_db_path.setText(tr("settings.label_db_path"))
  
 
     def _on_language_changed(self, index: int):
@@ -522,8 +543,8 @@ class SettingsTab(QWidget):
                 )
                 return
 
-            app_settings.db_path = path
-            self.label_db_path_status.setText(tr("settings.db_path_saved"))
+        app_settings.db_path = path
+        self.label_db_path_status.setText(tr("settings.db_path_saved"))
 
 
     def _load_settings(self):
@@ -537,9 +558,3 @@ class SettingsTab(QWidget):
 
         saved_path = app_settings.db_path
         if saved_path: self.input_db_path.setText(saved_path)
-
-        loc = models.get_default_location()
-        if loc:
-            self.input_lat.setText(str(loc["lat"]))
-            self.input_lng.setText(str(loc["lng"]))
-            self.input_radius.setValue(loc["radius_km"])

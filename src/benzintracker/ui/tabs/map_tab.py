@@ -29,10 +29,10 @@ from benzintracker import config
 from benzintracker.translator import tr, translator
 
 
-TOOLBAR_HEIGHT = 44
-MAP_CENTER = (51.0, 10.0)
-MAP_ZOOM_LEVEL = 6
-MAP_ZOOM_START_LEVEL = 8
+TOOLBAR_HEIGHT              = 44
+MAP_CENTER                  = (51.0, 10.0)
+MAP_ZOOM_LEVEL              = 6
+MAP_ZOOM_START_LEVEL        = 8
 
 
 # Colors for the fuel type badges in the popup;
@@ -67,7 +67,7 @@ class MapTab(QWidget):
         super().__init__(parent)
         self._stations: list[dict] = []
         self._dark = False
-        self._current_location: dict | None = models.get_default_location()
+        self._current_location: dict | None
 
         # Install the interceptor onto the default profile;
         # It must be set before _build_ui() as the QWebEngineView references the profile at creation;
@@ -75,6 +75,7 @@ class MapTab(QWidget):
         QWebEngineProfile.defaultProfile().setUrlRequestInterceptor(self._interceptor)
 
         self._build_ui()
+        self._current_location = models.get_default_location()
         self._show_location_or_empty()
 
     
@@ -174,7 +175,7 @@ class MapTab(QWidget):
         self._show_location_or_empty()
 
 
-    def _render_map(self, center: list = None, zoom: int = 13):
+    def _render_map(self, center: list = None, zoom: int = 13, force_station: bool = False):
         """
         Rebuilds the folium-map and loads it into the WebView.
         """
@@ -197,8 +198,9 @@ class MapTab(QWidget):
 
         # Own Location;
         if self._current_location:
+            home_coords = [self._current_location["lat"], self._current_location["lng"]]
             folium.Marker(
-                location=center,
+                location=home_coords,
                 tooltip=tr("map.my_location"),
                 popup=folium.Popup(
                     f"<b>{self._current_location['name']}</b>", max_width=200
@@ -247,7 +249,10 @@ class MapTab(QWidget):
         self.label_count.setText(tr("map.stations_displayed", n=visible))
 
         # Load HTML into WebView;
-        self.web_view.setHtml(m._repr_html_(), QUrl("about:blank"))
+        html = m._repr_html_()
+        if force_station and center is not None:
+            html = self._inject_setview(html, center[0], center[1], zoom)
+        self.web_view.setHtml(html, QUrl("about:blank"))
 
 
     def _build_popup_html(self, s: dict) -> str:
@@ -322,10 +327,35 @@ class MapTab(QWidget):
         if station is None: return
 
         # Rerender the map with the specific station in the center;
-        self._render_map(center=[station["lat"], station["lng"]], zoom=3)
+        self._render_map(center=[station["lat"], station["lng"]], zoom=3, force_station=True)
 
 
     def set_theme(self, dark: bool):
         self._dark = dark
         if self._stations or self._current_location: self._render_map()
         else: self._show_empty_map()
+
+
+    def _inject_setview(self, html: str, lat: float, lng: float, zoom: int) -> str:
+        """
+        Inject a LeafLet setView()-Call at the end of the HTML.
+        Folium names the map-variables usually with 'map_<hash>' - we are looking for
+        the name in the generated HTML and call setView on it.
+        """
+        import re
+
+        match = re.search(r"var (map_[a-z0-9]+)\s*=\s*L\.map\(", html)
+        if match:
+            map_var = match.group(1)
+            inject = (
+                f"<script>"
+                f"document.addEventListener('DOMContentLoaded', function() {{"
+                f"  if(typeof {map_var} !== 'undefined') {{"
+                f"    {map_var}.setView([{lat}, {lng}], {zoom});"
+                f"  }}"
+                f"}});"
+                f"</script>"
+            )
+            html = html.replace("</body>", inject + "</body>")
+
+        return html

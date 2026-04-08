@@ -28,6 +28,7 @@ _LIGHT = {
     "tooltip_base":    "#fffde7",
     "tooltip_text":    "#1a1a1a",
     "placeholder":     "#9e9e9e",
+    "status_text":     "#666666"
 }
  
 _DARK = {
@@ -48,6 +49,7 @@ _DARK = {
     "tooltip_base":    "#2d2d2d",
     "tooltip_text":    "#e0e0e0",
     "placeholder":     "#757575",
+    "status_text":     "#9e9e9e"
 }
 
 
@@ -73,12 +75,13 @@ def _build_palette(tokens: dict) -> QPalette:
     p.setColor(QPalette.ColorRole.PlaceholderText,  QColor(tokens["placeholder"]))
 
     # Disabled group: dimmed variants;
-    for role, key in [
-        (QPalette.ColorRole.WindowText,      "mid"),
-        (QPalette.ColorRole.Text,            "mid"),
-        (QPalette.ColorRole.ButtonText,      "mid")
+    disabled_color = QColor(tokens["status_text"])
+    for role in [
+        QPalette.ColorRole.WindowText,
+        QPalette.ColorRole.Text,
+        QPalette.ColorRole.ButtonText,
     ]:
-        p.setColor(QPalette.ColorGroup.Disabled, role, QColor(tokens[key]))
+        p.setColor(QPalette.ColorGroup.Disabled, role, disabled_color)
 
     return p
 
@@ -87,11 +90,12 @@ PALETTE_LIGHT = _build_palette(_LIGHT)
 PALETTE_DARK = _build_palette(_DARK)
 
 # Minimal stylesheet for semantic classes which QPalette does not cover;
-SEMANTIC_STYLESHEET = """
-    QLabel#label_error       { color: #e53935; font-size: 11px; }
-    QLabel#label_status      { color: palette(mid); font-size: 11px; }
-    QToolBar                 { border: none; padding: 4px 8px; spacing: 8px; }
-    QStatusBar               { font-size: 11px; }
+def _semantic_stylesheet(status_color: str) -> str:
+    return f"""
+    QLabel#label_error       {{ color: #e53935; font-size: 11px; }}
+    QLabel#label_status      {{ color: {status_color}; font-size: 11px; }}
+    QToolBar                 {{ border: none; padding: 4px 8px; spacing: 8px; }}
+    QStatusBar               {{ font-size: 11px; color: {status_color}; }}
 """
 
 
@@ -103,7 +107,10 @@ def apply_theme(theme: str):
     Args:
         theme: "light" or "dark"
     """
+    tokens = _LIGHT if theme == "light" else _DARK
+    palette = _build_palette(tokens)
+
     app = QApplication.instance()
     app.setStyle("fusion")
-    app.setPalette(PALETTE_LIGHT if theme == "light" else PALETTE_DARK)
-    app.setStyleSheet(SEMANTIC_STYLESHEET)
+    app.setPalette(palette)
+    app.setStyleSheet(_semantic_stylesheet(tokens["status_text"]))

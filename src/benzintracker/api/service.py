@@ -9,8 +9,10 @@ Procedure of a Refresh:
     3. Write prices into the prices-table
     4. Get the processed data for the map and tables
 """
+from datetime import datetime
+
 from benzintracker.api.tankerkonig import TankerkonigClient, TankerkonigError
-from benzintracker.database import models
+from benzintracker.database.db import get_connection
 from benzintracker import config
 
 
@@ -33,57 +35,70 @@ def refresh_for_location(
     """
     client = TankerkonigClient(api_key=api_key)
 
-
-
-    # ---------------------------------------------------------------------------------------------------
-    # 1. API Query;
-    # ---------------------------------------------------------------------------------------------------
     raw_stations = client.fetch_stations(lat=lat, lng=lng, radius_km=radius_km)
-    
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-
-    # ---------------------------------------------------------------------------------------------------
-    # 2. Save station data and write new prices;
-    # ---------------------------------------------------------------------------------------------------
     results = []
-    for s in raw_stations:
-        # Normalize the station data and upsert;
-        models.upsert_station({
-            "id":                   s["id"],
-            "name":                 s.get("name", ""),
-            "brand":                s.get("brand", ""),
-            "street":               s.get("street", ""),
-            "house_number":         s.get("houseNumber", ""),
-            "city":                 s.get("place", ""),
-            "city_code":            s.get("postCode", ""),
-            "lat":                  s["lat"],
-            "lng":                  s["lng"],
-            "is_open":              int(s.get("isOpen", False))
-        })
-
-        prices = {}
-        for fuel in TankerkonigClient.FUEL_TYPES:
-            price = s.get(fuel)
-            if price is not None:
-                models.insert_price(s["id"], fuel, float(price))
-
-            prices[fuel] = float(price) if price is not None else None
-
-        results.append({
-            "id":                   s["id"],
-            "name":                 s.get("name", ""),
-            "brand":                s.get("brand", ""),
-            "street":               s.get("street", ""),
-            "house_number":         s.get("houseNumber", ""),
-            "city":                 s.get("place", ""),
-            "city_code":            s.get("postCode", ""),
-            "lat":                  s["lat"],
-            "lng":                  s["lng"],
-            "dist":                 s.get("dist", 0.0),
-            "is_open":              int(s.get("isOpen", False)),
-            "prices":               prices
-        })
-
+    conn = get_connection()
+    try:
+        with conn:
+            for s in raw_stations:
+                # Stammdaten upserten
+                conn.execute("""
+                    INSERT INTO stations
+                        (id, name, brand, street, house_number,
+                         city, post_code, lat, lng, is_open)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(id) DO UPDATE SET
+                        name         = excluded.name,
+                        brand        = excluded.brand,
+                        street       = excluded.street,
+                        house_number = excluded.house_number,
+                        city         = excluded.city,
+                        post_code    = excluded.post_code,
+                        lat          = excluded.lat,
+                        lng          = excluded.lng,
+                        is_open      = excluded.is_open
+                """, (
+                    s["id"],
+                    s.get("name", ""),
+                    s.get("brand", ""),
+                    s.get("street", ""),
+                    s.get("houseNumber", ""),
+                    s.get("place", ""),
+                    s.get("postCode", ""),
+                    s["lat"],
+                    s["lng"],
+                    int(s.get("isOpen", False)),
+                ))
+ 
+                # Alle drei Kraftstoffpreise speichern
+                prices = {}
+                for fuel in TankerkonigClient.FUEL_TYPES:
+                    price = s.get(fuel)
+                    if price is not None:
+                        conn.execute(
+                            "INSERT INTO prices "
+                            "(station_id, fuel_type, price, recorded_at) "
+                            "VALUES (?, ?, ?, ?)",
+                            (s["id"], fuel, float(price), now)
+                        )
+                    prices[fuel] = float(price) if price is not None else None
+ 
+                results.append({
+                    "id":      s["id"],
+                    "name":    s.get("name", ""),
+                    "brand":   s.get("brand", ""),
+                    "city":    s.get("place", ""),
+                    "lat":     s["lat"],
+                    "lng":     s["lng"],
+                    "dist":    s.get("dist", 0.0),
+                    "is_open": s.get("isOpen", False),
+                    "prices":  prices,
+                })
+    finally:
+        conn.close()
+ 
     return results
 
 
@@ -100,18 +115,26 @@ def refresh_prices_only(
     """
     client = TankerkonigClient(api_key=api_key)
     raw_prices = client.fetch_prices(station_ids)
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     results = {}
-    for station_id, price_data in raw_prices.items():
-        prices = {}
-
-        for fuel in TankerkonigClient.FUEL_TYPES:
-            price = price_data.get(fuel)
-            if price is not None:
-                models.insert_price(station_id, fuel, float(price))
-
-            prices[fuel] = float(price) if price is not None else None
-
-        results[station_id] = prices
-
+    conn = get_connection()
+    try:
+        with conn:
+            for station_id, price_data in raw_prices.items():
+                prices = {}
+                for fuel in TankerkonigClient.FUEL_TYPES:
+                    price = price_data.get(fuel)
+                    if price is not None:
+                        conn.execute(
+                            "INSERT INTO prices "
+                            "(station_id, fuel_type, price, recorded_at) "
+                            "VALUES (?, ?, ?, ?)",
+                            (station_id, fuel, float(price), now)
+                        )
+                    prices[fuel] = float(price) if price is not None else None
+                results[station_id] = prices
+    finally:
+        conn.close()
+ 
     return results

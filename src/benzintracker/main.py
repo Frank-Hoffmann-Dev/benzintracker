@@ -1,14 +1,21 @@
 """
 main.py - Main Entry Point, called via CLI 'benzintracker'.
+
+The order of loading is CRITICAL:
+    1. QApplication()               -> Must exists BEFORE QSettings
+    2. read app_settings            -> Now QSettings is actually usable
+    3. Set DB-Path into config      -> Must be set BEFORE init_db()
+    4. init_db()                    -> open the db from the set path
+    5. Lang + Theme                 -> prepare for GUI
+    6. MainWindow()
 """
+import os
 import sys
-from PySide6.QtWidgets import QApplication
-from benzintracker.database.db import init_db
-from benzintracker.ui.main_window import MainWindow
-from benzintracker.translator import translator
 
 
 def main():
+    from PySide6.QtWidgets import QApplication
+
     app = QApplication(sys.argv)
     app.setApplicationName("BenzinTracker")
     app.setOrganizationName("benzintracker")
@@ -16,7 +23,15 @@ def main():
     # Load and set the theme before creating the main window;
     from benzintracker.settings import app_settings
     from benzintracker.ui.styles import apply_theme
+    from benzintracker.translator import translator
     from benzintracker import config
+    from benzintracker.database.db import init_db
+
+    saved_db_path = app_settings.db_path
+    if saved_db_path:
+        db_dir = os.path.dirname(saved_db_path)
+        if db_dir: os.makedirs(db_dir, exist_ok=True)
+        config.DB_PATH = saved_db_path
 
     init_db()
 
@@ -31,6 +46,7 @@ def main():
     saved_theme = app_settings.theme
     apply_theme(saved_theme)
 
+    from benzintracker.ui.main_window import MainWindow
     window = MainWindow(initial_theme=saved_theme)
     window.show()
 
