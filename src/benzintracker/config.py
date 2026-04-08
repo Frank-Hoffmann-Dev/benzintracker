@@ -1,6 +1,11 @@
 """
-config.py - Central Configuration for 'Benzintracker'.
-API-Key and other settings are stored here.
+config.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Central Configuration for 'Benzintracker'.
+=========================================================================================
 
 The path to the database points according to each platform:
     - Linux:            ~/.local/share/benzintracker/

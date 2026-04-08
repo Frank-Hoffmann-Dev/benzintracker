@@ -1,5 +1,11 @@
 """
-service.py - Connects the API-Client with the database layer.
+service.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Connects the API-Client with the database layer.
+=========================================================================================
 
 The GUI calls only those functions and doesn't need to know how the API or database works.
 

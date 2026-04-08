@@ -1,5 +1,11 @@
 """
-tankerkonig.py - Client for the Tankerkönig API (https://creativecommons.tankerkoenig.de/)
+tankerkonig.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Client for the Tankerkönig API (https://creativecommons.tankerkoenig.de/)
+=========================================================================================
 
 Endpoints:
     - /list.php         Gas station + current prices in an area

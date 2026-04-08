@@ -1,5 +1,11 @@
 """
-stats_tab.py - Statistics with four matplotlib-charts.
+stats_tab.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Statistics with four matplotlib-charts.
+=========================================================================================
 
 Charts:
     1. Price History            Line chart, one line per choosen station

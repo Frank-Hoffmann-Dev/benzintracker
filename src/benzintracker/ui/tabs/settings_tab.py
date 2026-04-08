@@ -1,5 +1,11 @@
 """
 settings_tab.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: All Settings for managing the application.
+=========================================================================================
 
 Settings Tab with:
     - Input for API-Key and validation

@@ -1,5 +1,11 @@
 """
-main_window.py - Main Window of the Application.
+main_window.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Main Window of the Application.
+=========================================================================================
 
 Responsible for:
     - Tab-Structure (Map, Price-table, statistics, Settings)

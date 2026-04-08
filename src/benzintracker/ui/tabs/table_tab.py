@@ -1,5 +1,11 @@
 """
-table_tab.py - Price table of all stations of the last refresh.
+table_tab.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Price table of all stations of the last refresh.
+=========================================================================================
 
 Features:
     - Columns: Name, Brand, City, Distance, E5, E10, Diesel, Status

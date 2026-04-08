@@ -1,5 +1,11 @@
 """
-styles.py - Stylesheets for Benzintracker.
+styles.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Stylesheets for Benzintracker.
+=========================================================================================
 
 Native Styling via QApplication.setStyle("fusion") + QPalette.
 

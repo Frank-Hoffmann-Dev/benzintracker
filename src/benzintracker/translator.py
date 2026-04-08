@@ -1,5 +1,11 @@
 """
-translator.py - Central Translator for the runtime l10n.
+translator.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Central Translator for the runtime l10n.
+=========================================================================================
 
 Usage:
     from benzintracker.translator import tr, translator

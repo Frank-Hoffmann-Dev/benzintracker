@@ -1,5 +1,11 @@
 """
-models.py - Contains all models for the CRUD opersations on the tables.
+models.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Contains all models for the CRUD opersations on the tables.
+=========================================================================================
 
 CRUD for Tables:
     - stations              -> Core-data of the stations

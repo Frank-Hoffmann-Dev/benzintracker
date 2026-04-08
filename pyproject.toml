@@ -45,8 +45,8 @@ dev = [
 benzintracker = "benzintracker.main:main"
 
 [project.urls]
-Homepage = "https://github.com/Frank-Hoffmann-Dev/sup2srt"
-"Bug Tracker" = "https://github.com/Frank-Hoffmann-Dev/sup2srt/issues"
+Homepage = "https://github.com/Frank-Hoffmann-Dev/benzintracker"
+"Bug Tracker" = "https://github.com/Frank-Hoffmann-Dev/benzintracker/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/benzintracker"]

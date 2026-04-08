@@ -1,5 +1,11 @@
 """
-db.py - SQLite Database Inteface
+db.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: SQLite Database Inteface
+=========================================================================================
 """
 import sqlite3
 import os

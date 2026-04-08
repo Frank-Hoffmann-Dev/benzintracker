@@ -1,5 +1,11 @@
 """
-map_tab.py - Mapview via Folium + QWebEngineView.
+map_tab.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Mapview via Folium + QWebEngineView.
+=========================================================================================
 
 Procedure:
     1. update_data(stations) is being called by the main window with each refresh

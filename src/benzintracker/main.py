@@ -1,5 +1,11 @@
 """
-main.py - Main Entry Point, called via CLI 'benzintracker'.
+main.py
+Author: Frank Hoffmann
+AI Assistent: Anthropic Claude AI - Sonnet 4.6
+Date: 08.04.2026
+License: MIT
+Description: Main Entry Point, called via CLI 'benzintracker'.
+=========================================================================================
 
 The order of loading is CRITICAL:
     1. QApplication()               -> Must exists BEFORE QSettings
