@@ -13,9 +13,11 @@ import random
 
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QStatusBar,
-    QLabel, QPushButton, QToolBar
+    QLabel, QPushButton, QToolBar,
+    QSystemTrayIcon, QMenu, QApplication
 )
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QAction, QIcon
 
 from benzintracker.__init__ import __version__
 from benzintracker.ui.styles import apply_theme
@@ -48,10 +50,12 @@ class MainWindow(QMainWindow):
         self._theme = initial_theme
         self._internal_ms = app_settings.refresh_interval_min * 60 * 1_000
         self._last_refresh: datetime | None = None
+        self._last_stations: list[dict] = []
 
         self._build_ui()
         self._apply_theme(self._theme)
         self._setup_timer()
+        self._setup_tray()
         translator.language_changed.connect(self.retranslate)
 
         # Make directly after start the first call (with a slight delay);
@@ -199,11 +203,100 @@ class MainWindow(QMainWindow):
         self._update_next_refresh_label()
 
         # Fill tabs with the new data;
+        self._last_stations = stations
         self.tab_table.update_data(stations)
         self.tab_map.update_data(stations)
         self.tab_stats.update_data(stations)
 
         self._update_manual_refresh_button()
+
+    
+    def _setup_tray(self):
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray = None
+            return
+
+        self.tray = QSystemTrayIcon(self)
+        self.tray.setToolTip(tr("tray.tooltip"))
+
+        # Icon: App-Icon from assets or qt fallback;
+        from importlib.resources import files as _res_files
+        from PySide6.QtWidgets import QStyle
+
+        try:
+            icon_path = _res_files("benzintracker.assets").joinpath("tray_icon.png")
+            icon = QIcon(str(icon_path))
+            if icon.isNull(): raise ValueError("null icon")
+
+        except Exception:
+            icon = QApplication.style().standardIcon(
+                QStyle.StandardPixmap.SP_ComputerIcon
+            )
+
+        self.tray.setIcon(icon)
+        self.setWindowIcon(icon)
+
+        # Context Menu;
+        self._tray_menu = QMenu()
+        self._tray_action_show = QAction(tr("tray.action_show"), self)
+        self._tray_action_show.triggered.connect(self._show_window)
+        self._tray_action_quit = QAction(tr("tray.action_quit"), self)
+        self._tray_action_quit.triggered.connect(self._quit_app)
+
+        self._tray_menu.addAction(self._tray_action_show)
+        self._tray_menu.addSeparator()
+        self._tray_menu.addAction(self._tray_action_quit)
+        self.tray.setContextMenu(self._tray_menu)
+
+        # Single click: Show/hide window;
+        self.tray.activated.connect(self._on_tray_activated)
+
+        # Show tray when enabled in settings;
+        if app_settings.tray_enabled:
+            self.tray.show()
+
+
+    def _on_tray_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            if self.isVisible(): self.hide()
+            else: self._show_window()
+
+
+    def _show_window(self):
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+        if self._last_stations:
+            self.tab_table.update_data(self._last_stations)
+            self.tab_map.update_data(self._last_stations)
+            self.tab_stats.update_data(self._last_stations)
+
+
+    def _quit_app(self):
+        if self.tray: self.tray.hide()
+        QApplication.instance().quit()
+
+
+    def closeEvent(self, event):
+        if app_settings.tray_enabled and self.tray and self.tray.isVisible():
+            event.ignore()
+            self.hide()
+            self.tray.showMessage(
+                tr("tray.notify_hidden"),
+                tr("tray.notify_hidden_msg"),
+                QSystemTrayIcon.MessageIcon.Information,
+                3000    # 3 Seconds;
+            )
+
+        else: event.accept()
+
+
+    def _update_tray_mode(self, enabled: bool):
+        if self.tray is None: return
+
+        if enabled: self.tray.show()
+        else: self.tray.hide()
 
     
     def _update_manual_refresh_button(self):

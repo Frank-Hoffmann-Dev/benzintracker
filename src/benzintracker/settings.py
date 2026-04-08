@@ -83,6 +83,17 @@ class AppSettings:
         self._q.sync()
 
 
+    # System Tray;
+    @property
+    def tray_enabled(self) -> bool:
+        return self._q.value("ui/tray_enabled", False, type=bool)
+
+    @tray_enabled.setter
+    def tray_enabled(self, value: bool):
+        self._q.setValue("ui/tray_enabled", value)
+        self._q.sync()
+
+
     # Language;
     @property
     def language(self) -> str:

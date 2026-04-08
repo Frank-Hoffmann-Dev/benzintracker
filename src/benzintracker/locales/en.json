@@ -135,5 +135,13 @@
   "settings.db_dir_error": "Could not create directory:\n{error}",
   "settings.db_path_saved": "✅ Path saved – will be active after restart.",
   "settings.label_db_path": "Database path:",
-  "settings.btn_save_db_path": "Save path"
+  "settings.btn_save_db_path": "Save path",
+  "tray.tooltip": "Benzintracker is running in the background",
+  "tray.action_show": "Show window",
+  "tray.action_quit": "Quit",
+  "tray.notify_hidden": "Benzintracker is still running",
+  "tray.notify_hidden_msg": "Data is being fetched in the background.",
+  "settings.tray_not_available": "System Tray is not supported by your OS.",
+  "settings.group_tray": "System tray",
+  "settings.tray_enable": "Minimize to tray instead of closing"
 }

@@ -17,7 +17,7 @@
   "status.next_refresh_min": "Nächster Abruf: in {mins} m.",
   "status.next_refresh_sec": "Nächster Abruf: in {sec} s",
   "status.next_refresh_soon": "Nächster Abruf: gleich",
-  "status.no_location": "⚠  Kein Standort gesetzt – bitte unter Einstellungen eintragen.",
+  "status.no_location": "Kein Standort gesetzt – bitte unter Einstellungen eintragen.",
   "tabs.map": "🗺  Karte",
   "tabs.prices": "📋  Preise",
   "tabs.stats": "📈  Statistiken",
@@ -135,5 +135,13 @@
   "settings.db_dir_error": "Verzeichnis konnte nicht erstellt werden:\n{error}",
   "settings.db_path_saved": "✅ Pfad gespeichert – wird nach Neustart aktiv.",
   "settings.label_db_path": "Datenbankpfad:",
-  "settings.btn_save_db_path": "Pfad speichern"
+  "settings.btn_save_db_path": "Pfad speichern",
+  "tray.tooltip": "Benzintracker läuft im Hintergrund",
+  "tray.action_show": "Fenster anzeigen",
+  "tray.action_quit": "Beenden",
+  "tray.notify_hidden": "Benzintracker läuft weiter",
+  "tray.notify_hidden_msg": "Daten werden im Hintergrund abgerufen.",
+  "settings.tray_not_available": "System Tray wird auf diesem System nicht unterstützt.",
+  "settings.group_tray": "Infobereich (System Tray)",
+  "settings.tray_enable": "In den Infobereich minimieren statt beenden"
 }

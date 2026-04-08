@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QLineEdit, QPushButton, QSpinBox,
     QDoubleSpinBox, QGroupBox, QComboBox, QMessageBox,
-    QScrollArea, QFileDialog
+    QScrollArea, QFileDialog, QCheckBox, QSystemTrayIcon
 )
 from PySide6.QtGui import QDoubleValidator, QPalette, QColor
 from PySide6.QtCore import Qt, Signal
@@ -61,6 +61,7 @@ class SettingsTab(QWidget):
         root.addWidget(self._build_refresh_group())
         root.addWidget(self._build_theme_group())
         root.addWidget(self._build_language_group())
+        root.addWidget(self._build_tray_group())
         root.addWidget(self._build_database_group())
         root.addStretch()
         inner.setLayout(root)
@@ -194,6 +195,29 @@ class SettingsTab(QWidget):
         layout.addWidget(self.label_language)
         layout.addWidget(self.combo_language)
         layout.addStretch()
+
+        return box
+
+
+    def _build_tray_group(self) -> QGroupBox:
+        box = QGroupBox(tr("settings.group_tray"))
+        layout = QVBoxLayout(box)
+
+        self.check_tray = QCheckBox(tr("settings.tray_enable"), box)
+        self.check_tray.setChecked(app_settings.tray_enabled)
+
+        self.label_tray_hint = QLabel("", box)
+        self.label_tray_hint.setObjectName("label_status")
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            self.label_tray_hint.setText(
+                tr("settings.tray_not_available")
+            )
+            self.check_tray.setEnabled(False)
+
+        self.check_tray.stateChanged.connect(self._on_tray_changed)
+
+        layout.addWidget(self.check_tray)
+        layout.addWidget(self.label_tray_hint)
 
         return box
 
@@ -459,6 +483,7 @@ class SettingsTab(QWidget):
             "settings.group_api", "settings.group_location",
             "settings.group_refresh", "settings.group_theme",
             "settings.group_language", "settings.group_database",
+            "settings.group_tray"
         ]
 
         for box, key in zip(self.findChildren(GB), keys):
@@ -491,6 +516,16 @@ class SettingsTab(QWidget):
         self._lbl_interval.setText(tr("settings.label_interval"))
         self.label_language.setText(tr("settings.label_language"))
         self._lbl_db_path.setText(tr("settings.label_db_path"))
+        self.check_tray.setText(tr("settings.tray_enabled"))
+
+
+    def _on_tray_changed(self, state: int):
+        enabled = bool(state)
+        app_settings.tray_enabled = enabled
+
+        main_window = self.window()
+        if hasattr(main_window, "_update_tray_mode"):
+            main_window._update_tray_mode(enabled)
  
 
     def _on_language_changed(self, index: int):
@@ -558,3 +593,5 @@ class SettingsTab(QWidget):
 
         saved_path = app_settings.db_path
         if saved_path: self.input_db_path.setText(saved_path)
+
+        self.check_tray.setChecked(app_settings.tray_enabled)
