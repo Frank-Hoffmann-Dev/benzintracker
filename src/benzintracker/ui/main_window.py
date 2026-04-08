@@ -224,7 +224,7 @@ class MainWindow(QMainWindow):
         from PySide6.QtWidgets import QStyle
 
         try:
-            icon_path = _res_files("benzintracker.assets").joinpath("tray_icon.png")
+            icon_path = _res_files("benzintracker.assets").joinpath("app_icon.png")
             icon = QIcon(str(icon_path))
             if icon.isNull(): raise ValueError("null icon")
 

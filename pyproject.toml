@@ -31,8 +31,7 @@ dependencies = [
     "folium==0.20.0",
     "keyring==25.7.0",
     "matplotlib==3.10.8",
-    "numpy==2.4.4",
-    "geopy==2.4"
+    "numpy==2.4.4"
 ]
 
 [project.optional-dependencies]
