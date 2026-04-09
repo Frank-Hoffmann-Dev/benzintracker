@@ -488,8 +488,8 @@ class SettingsTab(QWidget):
         keys = [
             "settings.group_api", "settings.group_location",
             "settings.group_refresh", "settings.group_theme",
-            "settings.group_language", "settings.group_database",
-            "settings.group_tray"
+            "settings.group_language", "settings.group_tray",
+            "settings.group_database"
         ]
 
         for box, key in zip(self.findChildren(GB), keys):

@@ -141,7 +141,10 @@
   "tray.action_quit": "Beenden",
   "tray.notify_hidden": "Benzintracker läuft weiter",
   "tray.notify_hidden_msg": "Daten werden im Hintergrund abgerufen.",
-  "settings.tray_not_available": "System Tray wird auf diesem System nicht unterstützt.",
   "settings.group_tray": "Infobereich (System Tray)",
-  "settings.tray_enable": "In den Infobereich minimieren statt beenden"
+  "settings.tray_enable": "In den Infobereich minimieren statt beenden",
+  "stats.title_history": "Preisverlauf – {fuel}",
+  "stats.title_daily": "Tagesdurchschnitt – {fuel}",
+  "stats.title_comparison": "Stationsvergleich – {fuel}",
+  "stats.title_hourly": "Tageszeit-Analyse – {fuel}"
 }

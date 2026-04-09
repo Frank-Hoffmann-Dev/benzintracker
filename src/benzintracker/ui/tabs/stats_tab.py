@@ -92,6 +92,10 @@ class MplCanvas(FigureCanvas):
         self.fig.canvas.draw()
 
 
+    def set_title(self, title: str):
+        self.ax.set_title(title, fontsize=11, fontweight="normal", pad=8)
+
+
     def set_date_range(self, date_from: str, date_to: str):
         if self._data_text is not None:
             try: self._data_text.remove()
@@ -312,6 +316,7 @@ class PriceHistoryChart(QWidget):
             if all_dates:
                 self.canvas.set_date_range(min(all_dates), max(all_dates))
 
+        self.canvas.set_title(tr("stats.title_history", fuel=FUEL_LABELS[fuel]))
         self.canvas.apply_theme(self._dark)
 
 
@@ -400,6 +405,7 @@ class DailyAverageChart(QWidget):
             ax.grid(True, linewidth=0.5, alpha=0.5)
             self.canvas.set_date_range(rows[0]["day"], rows[-1]["day"])
 
+        self.canvas.set_title(tr("stats.title_daily", fuel=FUEL_LABELS[fuel]))
         self.canvas.apply_theme(self._dark)
 
 
@@ -489,6 +495,7 @@ class StationComparisonChart(QWidget):
             if dates and dates[0]:
                 self.canvas.set_date_range(dates[0][:10], dates[1][:10])
 
+        self.canvas.set_title(tr("stats.title_comparison", fuel=FUEL_LABELS[fuel]))
         self.canvas.apply_theme(self._dark)
 
 
@@ -558,6 +565,7 @@ class HourlyPriceChart(QWidget):
                 ha="center", va="center", transform=ax.transAxes,
                 fontsize=12, color="gray", multialignment="center"
             )
+            self.canvas.set_title(tr("stats.title_hourly", fuel=FUEL_LABELS[fuel]))
 
         else:
             self.label_hint.hide()
@@ -591,6 +599,8 @@ class HourlyPriceChart(QWidget):
             dates = models.get_date_range(fuel)
             if dates and dates[0]:
                 self.canvas.set_date_range(dates[0][:10], dates[1][:10])
+
+            self.canvas.set_title(tr("stats.title_hourly", fuel=FUEL_LABELS[fuel]))
 
         self.canvas.apply_theme(self._dark)
 

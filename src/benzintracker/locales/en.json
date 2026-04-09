@@ -143,5 +143,9 @@
   "tray.notify_hidden_msg": "Data is being fetched in the background.",
   "settings.tray_not_available": "System Tray is not supported by your OS.",
   "settings.group_tray": "System tray",
-  "settings.tray_enable": "Minimize to tray instead of closing"
+  "settings.tray_enabled": "Minimize to tray instead of closing",
+  "stats.title_history": "Price History – {fuel}",
+  "stats.title_daily": "Daily Average – {fuel}",
+  "stats.title_comparison": "Station Comparison – {fuel}",
+  "stats.title_hourly": "Time of Day Analysis – {fuel}"
 }
