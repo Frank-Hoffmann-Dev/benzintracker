@@ -153,7 +153,7 @@ class MapTab(QWidget):
         tiles = self.TILES_DARK if self._dark else self.TILES_LIGHT
         if self._current_location:
             center = [self._current_location["lat"], self._current_location["lng"]]
-            m = folium.Map(locals=center, zoom_start=MAP_ZOOM_START_LEVEL, tiles=tiles)
+            m = folium.Map(location=center, zoom_start=MAP_ZOOM_START_LEVEL, tiles=tiles)
 
             folium.Marker(
                 location=center,
@@ -333,7 +333,7 @@ class MapTab(QWidget):
         if station is None: return
 
         # Rerender the map with the specific station in the center;
-        self._render_map(center=[station["lat"], station["lng"]], zoom=3, force_station=True)
+        self._render_map(center=[station["lat"], station["lng"]], zoom=15, force_station=True)
 
 
     def set_theme(self, dark: bool):
