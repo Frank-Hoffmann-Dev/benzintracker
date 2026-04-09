@@ -209,7 +209,7 @@ class SettingsTab(QWidget):
         box = QGroupBox(tr("settings.group_tray"))
         layout = QVBoxLayout(box)
 
-        self.check_tray = QCheckBox(tr("settings.tray_enable"), box)
+        self.check_tray = QCheckBox(tr("settings.tray_enabled"), box)
         self.check_tray.setChecked(app_settings.tray_enabled)
 
         self.label_tray_hint = QLabel("", box)

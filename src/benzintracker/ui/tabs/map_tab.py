@@ -37,8 +37,8 @@ from benzintracker.translator import tr, translator
 
 TOOLBAR_HEIGHT              = 44
 MAP_CENTER                  = (51.0, 10.0)
-MAP_ZOOM_LEVEL              = 6
-MAP_ZOOM_START_LEVEL        = 8
+MAP_ZOOM_START_LEVEL        = 9
+FOCUS_STATION_LEVEL         = 18
 
 
 # Colors for the fuel type badges in the popup;
@@ -333,7 +333,11 @@ class MapTab(QWidget):
         if station is None: return
 
         # Rerender the map with the specific station in the center;
-        self._render_map(center=[station["lat"], station["lng"]], zoom=15, force_station=True)
+        self._render_map(
+            center=[station["lat"], station["lng"]],
+            zoom=FOCUS_STATION_LEVEL,
+            force_station=True
+        )
 
 
     def set_theme(self, dark: bool):

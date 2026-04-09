@@ -257,8 +257,24 @@ class PriceHistoryChart(QWidget):
     def _populate_stations(self):
         self.station_list.clear()
 
-        for s in models.get_all_stations():
-            item = QListWidgetItem(f"{s['name']} ({s.get('brand', '')})")
+        all_stations = models.get_all_stations()
+
+        all_names = [s["name"] for s in all_stations]
+        duplicate_names = {n for n in all_names if all_names.count(n) > 1}
+
+        for s in all_stations:
+            name = s["name"]
+            brand = s.get("brand", "")
+            street = s.get("street", "")
+            house_number = s.get("house_number", "")
+
+            if name in duplicate_names and street and street.lower() not in name.lower():
+                street_info = f"{street} {house_number}".strip()
+                display = f"{name}, {street_info} ({brand})" if brand else f"{name}, {street_info}"
+
+            else: display = f"{name} ({brand})" if brand else name
+            
+            item = QListWidgetItem(display)
             item.setData(Qt.ItemDataRole.UserRole, s["id"])
             self.station_list.addItem(item)
 
@@ -455,7 +471,9 @@ class StationComparisonChart(QWidget):
             rows = models.get_price_history(s["id"], fuel, days)
             if rows:
                 avg = sum(r["price"] for r in rows) / len(rows)
-                averages.append((s["name"], avg))
+                averages.append((
+                    s["name"], avg, s.get("street", ""), s.get("house_number", "")
+                ))
 
         self.canvas.clear()
         ax = self.canvas.ax
@@ -469,14 +487,35 @@ class StationComparisonChart(QWidget):
         else:
             # Sort by average price;
             averages.sort(key=lambda x: x[1])
-            names = [a[0] for a in averages]
+
+            all_names = [a[0] for a in averages]
+            duplicate_names = {n for n in all_names if all_names.count(n) > 1}
+
+            labels = []
+            for name, _, street, house_number in averages:
+                if name in duplicate_names or street:
+                    street_line = f"{street} {house_number}".strip()
+                    if street.lower() not in name.lower():
+                        labels.append(f"{name}\n{street_line}")
+                    
+                    else: labels.append(name)
+                else: labels.append(name)
+
             prices = [a[1] for a in averages]
+            fg = QApplication.instance().palette().color(QPalette.ColorRole.Text).name()
 
             # Cheapest green, the rest blue;
             colors = ["#4CAF50"] + [LINE_COLORS[0]] * (len(prices) - 1)
-            bars = ax.barh(names, prices, color=colors, height=0.6)
 
-            fg = QApplication.instance().palette().color(QPalette.ColorRole.Text).name()
+            bar_height = 0.5
+            ax.set_ylim(-0.8, len(prices) - 0.2)
+
+            bars = ax.barh(labels, prices, color=colors, height=bar_height)
+
+            for tick_label in ax.get_yticklabels():
+                if "\n" in tick_label.get_text():
+                    tick_label.set_fontsize(7.5)
+                else: tick_label.set_fontsize(9)
 
             # Value at the end of the bar;
             for bar, price in zip(bars, prices):
@@ -490,6 +529,8 @@ class StationComparisonChart(QWidget):
 
             # X-Ax a bit wider for the label;
             if prices: ax.set_xlim(min(prices) * 0.998, max(prices) * 1.008)
+
+            self.canvas.fig.subplots_adjust(left=0.38, right=0.92, top=0.88, bottom=0.12)
 
             dates = models.get_date_range(fuel)
             if dates and dates[0]:
