@@ -213,6 +213,25 @@ def _make_toolbar(with_period: bool = True, with_export: bool = True):
     return bar, combo_fuel, combo_period, btn_refresh, btn_export
 
 
+def _get_unique_station_names() -> list[tuple[str, str]]:
+    all_stations = models.get_all_stations()
+    all_names = [s["name"] for s in all_stations]
+    duplicates = {n for n in all_names if all_names.count(n) > 1}
+
+    names = []
+    for s in all_stations:
+        name = s["name"] or s["station_id"]
+        street = s.get("street", "")
+        house_number = s.get("house_number", "")
+
+        if name in duplicates and street and street.lower() not in name.lower():
+            names.append((s["id"], f"{name}, {street} {house_number}".strip()))
+
+        else: names.append((s["id"], f"{name}"))
+
+    return names
+
+
 
 # ---------------------------------------------------------------------------------------------------
 # Single Chart Widget;
@@ -257,25 +276,10 @@ class PriceHistoryChart(QWidget):
     def _populate_stations(self):
         self.station_list.clear()
 
-        all_stations = models.get_all_stations()
-
-        all_names = [s["name"] for s in all_stations]
-        duplicate_names = {n for n in all_names if all_names.count(n) > 1}
-
-        for s in all_stations:
-            name = s["name"]
-            brand = s.get("brand", "")
-            street = s.get("street", "")
-            house_number = s.get("house_number", "")
-
-            if name in duplicate_names and street and street.lower() not in name.lower():
-                street_info = f"{street} {house_number}".strip()
-                display = f"{name}, {street_info} ({brand})" if brand else f"{name}, {street_info}"
-
-            else: display = f"{name} ({brand})" if brand else name
-            
-            item = QListWidgetItem(display)
-            item.setData(Qt.ItemDataRole.UserRole, s["id"])
+        names = _get_unique_station_names()
+        for id, name in names:
+            item = QListWidgetItem(name)
+            item.setData(Qt.ItemDataRole.UserRole, id)
             self.station_list.addItem(item)
 
 
@@ -296,6 +300,7 @@ class PriceHistoryChart(QWidget):
 
         has_data = False
         all_dates = []
+        label_map = {sid: name for sid, name in _get_unique_station_names()}
         for idx, sid in enumerate(station_ids[:8]):
             rows = models.get_price_history(sid, fuel, days)
             if not rows: continue
@@ -303,8 +308,8 @@ class PriceHistoryChart(QWidget):
             times = [datetime.fromisoformat(r["recorded_at"]) for r in rows]
             prices = [r["price"] for r in rows]
             all_dates += [r["recorded_at"][:10] for r in rows]
-            station = models.get_station_by_id(sid)
-            label = station["name"] if station else sid[:8]
+
+            label = label_map.get(sid, sid[:8])
 
             color = LINE_COLORS[idx % len(LINE_COLORS)]
             ax.plot(

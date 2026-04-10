@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "benzintracker"
-version = "0.1.3"
+version = "0.1.4"
 description = "Track petrol prices in Germany via the Tankerkönig-API, SQLite and PySide6-GUI"
 readme = "README.md"
 licence = { file = "LICENSE" }
