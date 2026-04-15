@@ -2,15 +2,19 @@
 db.py
 Author: Frank Hoffmann
 AI Assistent: Anthropic Claude AI - Sonnet 4.6
-Date: 08.04.2026
+Date: 15.04.2026
 License: MIT
 Description: SQLite Database Inteface
 =========================================================================================
 """
 import sqlite3
 import os
+import math
 
 from benzintracker import config
+
+
+EARTH_RADIUS = 6371.0       # For Haversine Calculation;
 
 
 def get_connection() -> sqlite3.Connection:
@@ -25,6 +29,9 @@ def get_connection() -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")        # Activate foreign keys;
     #conn.execute("PRAGMA journal_mode = WAL")       # Write ahead logging;
     conn.execute("PRAGMA synchronous = NORMAL")     # Better than FULL, safer than OFF;
+
+    # Register as custom function;
+    conn.create_function("haversine", 4, _haversine)
     
     return conn
 
@@ -85,6 +92,20 @@ def init_db():
     conn.close()
     print(f"Initialized Database: {config.DB_PATH}")
 
+
+def _haversine(lat_1: float, lng_1: float, lat_2: float, lng_2: float) -> float:
+    """
+    Calculate the distance in km between two coordinates (Haversine).
+    """
+    dlat = math.radians(lat_2 - lat_1)
+    dlng = math.radians(lng_2 - lng_1)
+
+    a = math.sin(dlat / 2)**2 \
+        + math.cos(math.radians(lat_1)) \
+        * math.cos(math.radians(lat_2)) \
+        * math.sin(dlng / 2)**2
+
+    return EARTH_RADIUS * 2 * math.asin(math.sqrt(a))
 
 
 if __name__ == "__main__":

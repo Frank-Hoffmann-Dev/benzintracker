@@ -2,7 +2,7 @@
 stats_tab.py
 Author: Frank Hoffmann
 AI Assistent: Anthropic Claude AI - Sonnet 4.6
-Date: 08.04.2026
+Date: 15.04.2026
 License: MIT
 Description: Statistics with four matplotlib-charts.
 =========================================================================================
@@ -214,7 +214,12 @@ def _make_toolbar(with_period: bool = True, with_export: bool = True):
 
 
 def _get_unique_station_names() -> list[tuple[str, str]]:
-    all_stations = models.get_all_stations()
+    loc = models.get_default_location()
+    if loc:
+        all_stations = models.get_all_stations_near(loc["lat"], loc["lng"], loc["radius_km"])
+    else:
+        all_stations = models.get_all_stations()
+
     all_names = [s["name"] for s in all_stations]
     duplicates = {n for n in all_names if all_names.count(n) > 1}
 
@@ -301,8 +306,13 @@ class PriceHistoryChart(QWidget):
         has_data = False
         all_dates = []
         label_map = {sid: name for sid, name in _get_unique_station_names()}
+        loc = models.get_default_location()
         for idx, sid in enumerate(station_ids[:8]):
-            rows = models.get_price_history(sid, fuel, days)
+            if loc:
+                rows = models.get_price_history(sid, fuel, days, loc["lat"], loc["lng"], loc["radius_km"])
+            else:
+                rows = models.get_price_history(sid, fuel, days)
+
             if not rows: continue
 
             times = [datetime.fromisoformat(r["recorded_at"]) for r in rows]
@@ -383,7 +393,12 @@ class DailyAverageChart(QWidget):
     def refresh(self):
         fuel = self.combo_fuel.currentData()
         days = self.combo_period.currentData()
-        rows = models.get_average_prices_per_day(fuel, days)
+        loc = models.get_default_location()
+
+        if loc:
+            rows = models.get_average_prices_per_day(fuel, days, loc["lat"], loc["lng"], loc["radius_km"])
+        else:
+            rows = models.get_average_prices_per_day(fuel, days)
 
         self.canvas.clear()
         ax = self.canvas.ax
@@ -472,8 +487,13 @@ class StationComparisonChart(QWidget):
         # AVG per station from the DB;
         averages = []
 
+        loc = models.get_default_location()
         for s in models.get_all_stations():
-            rows = models.get_price_history(s["id"], fuel, days)
+            if loc:
+                rows = models.get_price_history(s["id"], fuel, days, loc["lat"], loc["lng"], loc["radius_km"])
+            else:
+                rows = models.get_price_history(s["id"], fuel, days)
+
             if rows:
                 avg = sum(r["price"] for r in rows) / len(rows)
                 averages.append((
@@ -591,7 +611,13 @@ class HourlyPriceChart(QWidget):
 
     def refresh(self):
         fuel = self.combo_fuel.currentData()
-        rows = models.get_hourly_averages(fuel)
+        loc = models.get_default_location()
+
+        if loc:
+            rows = models.get_hourly_averages(fuel, loc["lat"], loc["lng"], loc["radius_km"])
+        else:
+            rows = models.get_hourly_averages(fuel)
+
         total_points = sum(r["cnt"] for r in rows) if rows else 0
 
         self.canvas.clear()

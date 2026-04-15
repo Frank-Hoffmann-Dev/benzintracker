@@ -2,7 +2,7 @@
 models.py
 Author: Frank Hoffmann
 AI Assistent: Anthropic Claude AI - Sonnet 4.6
-Date: 08.04.2026
+Date: 15.04.2026
 License: MIT
 Description: Contains all models for the CRUD opersations on the tables.
 =========================================================================================
@@ -84,6 +84,32 @@ def get_date_range(fuel_type: str) -> list[str]:
     return row
 
 
+def get_all_stations_near(lat: float, lng: float, radius_km: float) -> list[dict]:
+    conn = get_connection()
+    rows = conn.execute(
+        """SELECT * FROM stations 
+        WHERE haversine(lat, lng, ?, ?) <= ?
+        ORDER BY name""",
+        (lat, lng, radius_km,),
+    ).fetchall()
+    conn.close()
+
+    return [dict(row) for row in rows]
+
+
+def get_station_ids_near(lat: float, lng: float, radius_km: float) -> list[str]:
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT id
+        FROM stations
+        WHERE haversine(lat, lng, ?, ?) <= ?
+    """, (lat, lng, radius_km)).fetchall()
+    conn.close()
+
+    return [row["id"] for row in rows]
+
+
+
 # ---------------------------------------------------------------------------------------------------
 # Prices;
 # ---------------------------------------------------------------------------------------------------
@@ -99,13 +125,27 @@ def insert_price(station_id: str, fuel_type: str, price: float):
     conn.close()
 
 
-def get_latest_prices(fuel_type: str = "e5") -> list[dict]:
+def get_latest_prices(
+        fuel_type: str = "e5",
+        lat: float | None = None,
+        lng: float | None = None,
+        radius_km: float | None = None
+    ) -> list[dict]:
     conn = get_connection()
-    rows = conn.execute("""
+
+    location_filter = ""
+    params: list = [fuel_type]
+
+    if lat is not None and lng is not None and radius_km is not None:
+        location_filter = "AND haversine(s.lat, s.lng, ?, ?) <= ?"
+        params += [lat, lng, radius_km]
+
+    rows = conn.execute(f"""
         SELECT s.id, s.name, s.brand, s.city, s.lat, s.lng, p.price, p.fuel_type, p.recorded_at
         FROM prices p
         JOIN stations s ON s.id = p.station_id
         WHERE p.fuel_type = ?
+        {location_filter}
         AND p.recorded_at = (
             SELECT MAX(p2.recorded_at)
             FROM prices p2
@@ -113,53 +153,94 @@ def get_latest_prices(fuel_type: str = "e5") -> list[dict]:
             AND p2.fuel_type = p.fuel_type
         )
         ORDER BY p.price ASC
-    """, (fuel_type,)).fetchall()
+    """, params).fetchall()
     conn.close()
 
     return [dict(row) for row in rows]
 
 
-def get_price_history(station_id: str, fuel_type: str, days: int = 30) -> list[dict]:
+def get_price_history(
+        station_id: str, fuel_type: str, days: int = 30,
+        lat: float | None = None, lng: float | None = None,
+        radius_km: float | None = None
+    ) -> list[dict]:
     conn = get_connection()
-    rows = conn.execute("""
-        SELECT price, recorded_at
-        FROM prices
-        WHERE station_id = ?
-        AND fuel_type = ?
-        AND recorded_at >= datetime('now', ?)
-        ORDER BY recorded_at ASC
-    """, (station_id, fuel_type, f"-{days} days",)).fetchall()
+
+    location_filter = ""
+    params: list = [station_id, fuel_type, f"-{days} days"]
+
+    if lat is not None and lng is not None and radius_km is not None:
+        location_filter = "AND haversine(s.lat, s.lng, ?, ?) <= ?"
+        params += [lat, lng, radius_km]
+
+    rows = conn.execute(f"""
+        SELECT p.price, p.recorded_at
+        FROM prices p
+        join stations s on s.id == p.station_id
+        WHERE p.station_id = ?
+        AND p.fuel_type = ?
+        AND p.recorded_at >= datetime('now', ?)
+        {location_filter}
+        ORDER BY p.recorded_at ASC
+    """, params).fetchall()
     conn.close()
 
     return [dict(row) for row in rows]
 
 
-def get_average_prices_per_day(fuel_type: str = "e5", days: int = 30) -> list[dict]:
+def get_average_prices_per_day(
+        fuel_type: str = "e5", days: int = 30,
+        lat: float | None = None, lng: float | None = None,
+        radius_km: float | None = None
+        ) -> list[dict]:
     conn = get_connection()
-    rows = conn.execute("""
-        SELECT DATE(recorded_at) AS day, AVG(price) AS avg_price
-        FROM prices
+
+    location_filter = ""
+    params: list = [fuel_type, f"-{days} days"]
+
+    if lat is not None and lng is not None and radius_km is not None:
+        location_filter = "AND haversine(s.lat, s.lng, ?, ?) <= ?"
+        params += [lat, lng, radius_km]
+
+    rows = conn.execute(f"""
+        SELECT DATE(p.recorded_at) AS day, AVG(p.price) AS avg_price
+        FROM prices p
+        JOIN stations s on s.id == p.station_id
         WHERE fuel_type = ?
         AND recorded_at >= datetime('now', ?)
+        {location_filter}
         GROUP BY day
         ORDER BY day ASC
-    """, (fuel_type, f"-{days} days",)).fetchall()
+    """, params).fetchall()
     conn.close()
 
     return [dict(row) for row in rows]
 
 
-def get_hourly_averages(fuel_type: str) -> list:
+def get_hourly_averages(
+        fuel_type: str, lat: float | None = None, lng: float | None = None,
+        radius_km: float | None = None
+    ) -> list:
     conn = get_connection()
-    rows = conn.execute("""
-        SELECT CAST(strftime('%H', recorded_at) AS INTEGER) AS hour,
-            AVG(price) AS avg_price,
+
+    location_filter = ""
+    params: list = [fuel_type]
+
+    if lat is not None and lng is not None and radius_km is not None:
+        location_filter = "AND haversine(s.lat, s.lng, ?, ?) <= ?"
+        params += [lat, lng, radius_km]
+
+    rows = conn.execute(f"""
+        SELECT CAST(strftime('%H', p.recorded_at) AS INTEGER) AS hour,
+            AVG(p.price) AS avg_price,
             COUNT(*) AS cnt
-        FROM prices
+        FROM prices p
+        JOIN stations s on s.id == p.station_id
         WHERE fuel_type = ?
+        {location_filter}
         GROUP BY hour
         ORDER BY hour
-    """, (fuel_type,)).fetchall()
+    """, params).fetchall()
     conn.close()
 
     return rows
