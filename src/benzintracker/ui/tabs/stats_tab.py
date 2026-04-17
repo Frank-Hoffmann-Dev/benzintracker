@@ -84,8 +84,12 @@ class MplCanvas(FigureCanvas):
 
 
     def clear(self):
+        if self._data_text is not None:
+            try: self._data_text.remove()
+            except Exception: pass
+            self._data_text = None
+
         self.ax.clear()
-        self._data_text = None
 
 
     def redraw(self):
@@ -102,7 +106,7 @@ class MplCanvas(FigureCanvas):
             except Exception: pass
 
         self._data_text = self.fig.text(
-            0.99, 0.01, f"{date_from} - {date_to}",
+            0.99, 0.01, f"{tr("stats.data_daterange")}: {date_from} - {date_to}",
             ha="right", va="bottom", fontsize=7,
             alpha=0.6, transform=self.fig.transFigure
         )
@@ -486,6 +490,7 @@ class StationComparisonChart(QWidget):
 
         # AVG per station from the DB;
         averages = []
+        all_dates = []
 
         loc = models.get_default_location()
         for s in models.get_all_stations():
@@ -499,6 +504,7 @@ class StationComparisonChart(QWidget):
                 averages.append((
                     s["name"], avg, s.get("street", ""), s.get("house_number", "")
                 ))
+                all_dates += [r["recorded_at"][:10] for r in rows]
 
         self.canvas.clear()
         ax = self.canvas.ax
@@ -557,9 +563,8 @@ class StationComparisonChart(QWidget):
 
             self.canvas.fig.subplots_adjust(left=0.38, right=0.92, top=0.88, bottom=0.12)
 
-            dates = models.get_date_range(fuel)
-            if dates and dates[0]:
-                self.canvas.set_date_range(dates[0][:10], dates[1][:10])
+            if all_dates:
+                self.canvas.set_date_range(min(all_dates), max(all_dates))
 
         self.canvas.set_title(tr("stats.title_comparison", fuel=FUEL_LABELS[fuel]))
         self.canvas.apply_theme(self._dark)
@@ -668,7 +673,9 @@ class HourlyPriceChart(QWidget):
             ax.set_xticklabels([f"{h:02d}:00" for h in range(0, 24, 2)], rotation=45, ha="right")
             ax.grid(True, linewidth=0.5, alpha=0.5)
 
-            dates = models.get_date_range(fuel)
+            if loc: dates = models.get_date_range(fuel, lat=loc["lat"], lng=loc["lng"], radius_km=loc["radius_km"])
+            else: dates = models.get_date_range(fuel)
+
             if dates and dates[0]:
                 self.canvas.set_date_range(dates[0][:10], dates[1][:10])
 
@@ -685,6 +692,153 @@ class HourlyPriceChart(QWidget):
         self._dark = dark
         self.refresh()
 
+
+class WeekdayAverageChart(QWidget):
+    MIN_DATAPOINTS = 7
+
+    _DOW_KEYS = [
+        "stats.weekday_mon", "stats.weekday_tue", "stats.weekday_wed", 
+        "stats.weekday_thu", "stats.weekday_fri", "stats.weekday_sat", 
+        "stats.weekday_sun"
+    ]
+
+    _COLORS = {
+        "GREEN": "#4CAF50",
+        "GRAY": "#cccccc",
+        "RED": "#E91E63"
+    }
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._dark = False
+        self._build_ui()
+
+    
+    def _build_ui(self):
+        root = QVBoxLayout(self)
+
+        bar, self.combo_fuel, self.combo_period, btn_refresh, btn_export = \
+            _make_toolbar(with_period=True, with_export=True)
+
+        btn_refresh.clicked.connect(self.refresh)
+        btn_export.clicked.connect(lambda: self.canvas.export(self))
+        root.addLayout(bar)
+
+        self.label_hint = QLabel("")
+        self.label_hint.setObjectName("label_status")
+        self.label_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label_hint.hide()
+        root.addWidget(self.label_hint)
+
+        self.canvas = MplCanvas(self)
+        root.addWidget(self.canvas)
+
+
+    def refresh(self):
+        fuel = self.combo_fuel.currentData()
+        days = self.combo_period.currentData()
+        loc = models.get_default_location()
+
+        if loc:
+            rows = models.get_weekday_averages(fuel, days, loc["lat"], loc["lng"], loc["radius_km"])
+        else:
+            rows = models.get_weekday_averages(fuel, days)
+
+        total_points = sum(r["cnt"] for r in rows) if rows else 0
+
+        self.canvas.clear()
+        ax = self.canvas.ax
+
+        if total_points < self.MIN_DATAPOINTS:
+            self.label_hint.show()
+            self.label_hint.setText(tr(
+                "stats.weekday_locked",
+                n=self.MIN_DATAPOINTS - total_points,
+                have=total_points,
+                need=self.MIN_DATAPOINTS
+            ))
+            ax.text(
+                0.5, 0.5,
+                tr("stats.weekday_locked_ax_text", n=self.MIN_DATAPOINTS - total_points),
+                ha="center", va="center", transform=ax.transAxes,
+                fontsize=12, color="gray", multialignment="center"
+            )
+
+        else: 
+            self.label_hint.hide()
+
+            dow_map = {r["dow"]: r["avg_price"] for r in rows}
+            day_labels = [tr(k) for k in self._DOW_KEYS]
+            prices = [dow_map.get(i) for i in range(7)]
+
+            valid_prices = [p for p in prices if p is not None]
+
+            if not valid_prices:
+                ax.text(
+                    0.5, 0.5, tr("stats.no_data"), ha="center", va="center",
+                    transform=ax.transAxes, fontsize=12, color="gray"
+                )
+                self.canvas.set_title(tr("stats.title_weekday", fuel=FUEL_LABELS[fuel]))
+                self.canvas.apply_theme(self._dark)
+
+                return
+
+            min_price = min(valid_prices)
+            max_price = max(valid_prices)
+            fg = QApplication.instance().palette().color(QPalette.ColorRole.Text).name()
+
+            colors = []
+            for p in prices:
+                if p is None: colors.append(self._COLORS["GRAY"])
+                elif p == min_price: colors.append(self._COLORS["GREEN"])
+                elif p == max_price: colors.append(self._COLORS["RED"])
+                else: colors.append(LINE_COLORS[0])
+
+            plot_prices = [p if p is not None else 0.0 for p in prices]
+            bars = ax.bar(day_labels, plot_prices, color=colors, width=0.6)
+
+            for bar, price in zip(bars, prices):
+                if price is not None:
+                    ax.text(
+                        bar.get_x() + bar.get_width() / 2,
+                        bar.get_height() + 0.001,
+                        f"{price:.3f} €",
+                        ha="center", va="bottom", fontsize=9, color=fg
+                    )
+
+            cheapest_idx = prices.index(min_price)
+            diff = max_price - min_price
+            ax.annotate(
+                tr("stats.weekday_cheapest", day=day_labels[cheapest_idx]),
+                xy=(cheapest_idx, min_price),
+                xytext=(cheapest_idx, min_price - diff * 0.35),
+                ha="center", fontsize=9, color="gray", arrowprops=dict(arrowstyle="->", color="gray")
+            )
+            y_margin = diff * 0.15 if max_price != min_price else 0.005
+            ax.set_ylim(min(plot_prices) * 0.997, max(plot_prices) + y_margin + 0.0012)
+            ax.set_ylabel(tr("stats.ylabel_price", fuel=FUEL_LABELS[fuel]))
+            ax.grid(True, axis="y", linewidth=0.5, alpha=0.5)
+
+            if loc:
+                dates = models.get_date_range(fuel, days, lat=loc["lat"], lng=loc["lng"], radius_km=loc["radius_km"])
+            else:
+                dates = models.get_date_range(fuel, days)
+
+            if dates and dates[0]:
+                self.canvas.set_date_range(dates[0][:10], dates[1][:10])
+
+        self.canvas.set_title(tr("stats.title_weekday", fuel=FUEL_LABELS[fuel]))
+        self.canvas.apply_theme(self._dark)
+
+
+    def update_data(self, _stations):
+        self.refresh()
+
+
+    def set_dark(self, dark: bool):
+        self._dark = dark
+        self.refresh()
+            
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -712,11 +866,13 @@ class StatsTab(QWidget):
         self.chart_daily = DailyAverageChart(self)
         self.chart_comparison = StationComparisonChart(self)
         self.chart_hourly = HourlyPriceChart(self)
+        self.chart_weekday = WeekdayAverageChart(self)
 
         self.sub_tabs.addTab(self.chart_history, tr("stats.tab_history"))
         self.sub_tabs.addTab(self.chart_daily, tr("stats.tab_daily"))
         self.sub_tabs.addTab(self.chart_comparison, tr("stats.tab_comparison"))
         self.sub_tabs.addTab(self.chart_hourly, tr("stats.tab_hourly"))
+        self.sub_tabs.addTab(self.chart_weekday, tr("stats.tab_weekday"))
 
         root.addWidget(self.sub_tabs)
 
@@ -756,3 +912,4 @@ class StatsTab(QWidget):
         self.sub_tabs.setTabText(1, tr("stats.tab_daily"))
         self.sub_tabs.setTabText(2, tr("stats.tab_comparison"))
         self.sub_tabs.setTabText(3, tr("stats.tab_hourly"))
+        self.sub_tabs.setTabText(4, tr("stats.tab_weekday"))

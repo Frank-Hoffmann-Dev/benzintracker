@@ -73,12 +73,34 @@ def get_station_by_id(station_id: str) -> dict | None:
     return dict(row) if row else None
 
 
-def get_date_range(fuel_type: str) -> list[str]:
+def get_date_range(
+        fuel_type: str, days: int | None = None,
+        lat: float | None = None, lng: float | None = None,
+        radius_km: float | None = None
+    ) -> list[str]:
     conn = get_connection()
-    row = conn.execute(
-        "SELECT MIN(recorded_at), MAX(recorded_at) FROM prices WHERE fuel_type = ?",
-        (fuel_type,)
-    ).fetchone()
+
+    conditions = ["p.fuel_type = ?"]
+    params: list = [fuel_type]
+
+    if days is not None:
+        conditions.append("p.recorded_at >= datetime('now', ?)")
+        params.append(f"-{days} days")
+
+    location_join = ""
+    if lat is not None and lng is not None and radius_km is not None:
+        location_join = "JOIN stations s ON s.id == p.station_id"
+        conditions.append("haversine(s.lat, s.lng, ?, ?) <= ?")
+        params += [lat, lng, radius_km]
+
+    where = " AND ".join(conditions)
+
+    row = conn.execute(f"""
+        SELECT MIN(p.recorded_at), MAX(p.recorded_at)
+        FROM prices p
+        {location_join}
+        WHERE {where}
+    """, params).fetchone()
     conn.close()
 
     return row
@@ -244,6 +266,54 @@ def get_hourly_averages(
     conn.close()
 
     return rows
+
+
+def get_weekday_averages(
+        fuel_type: str, days: int = 7,
+        lat: float | None = None, lng: float | None = None,
+        radius_km: float | None = None
+    ) -> list:
+    """
+    Get the average prices per weekday (0=Monday, ..., 6=Sunday).
+    """
+    conn = get_connection()
+
+    location_filter = ""
+    params: list = [fuel_type, f"-{days} days"]
+
+    if lat is not None and lng is not None and radius_km is not None:
+        location_filter += "AND haversine(s.lat, s.lng, ?, ?) <= ?"
+        params += [lat, lng, radius_km]
+
+    rows = conn.execute(f"""
+        SELECT CAST(strftime('%w', p.recorded_at) AS INTEGER) AS dow,
+            AVG(p.price) as avg_price,
+            COUNT(*) as cnt
+        FROM prices p
+        JOIN stations s ON s.id == p.station_id
+        WHERE p.fuel_type = ?
+        AND p.recorded_at >= datetime('now', ?)
+        {location_filter}
+        GROUP BY dow
+        ORDER BY dow
+    """, params).fetchall()
+    conn.close()
+
+    # SQLite: 0=Sunday, ..., 6=Saturday -> remap to 0=Monday, ..., 6=Sunday;
+    remapped = []
+    for row in rows:
+        dow_sqlite = row["dow"]
+        dow_mon_first = (dow_sqlite - 1) % 7
+
+        remapped.append({
+            "dow": dow_mon_first,
+            "avg_price": row["avg_price"],
+            "cnt": row["cnt"]
+        })
+
+    remapped.sort(key=lambda r: r["dow"])
+
+    return remapped
 
 
 

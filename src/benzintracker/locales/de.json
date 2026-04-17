@@ -83,6 +83,7 @@
   "stats.export_success_message": "Gespeichert:\n{path}",
   "stats.export_failed_title": "Export fehlgeschlagen",
   "stats.btn_export": "Exportieren",
+  "stats.data_daterange": "Zeitraum der Daten",
   "settings.group_api": "API-Schlüssel",
   "settings.api_placeholder": "Tankerkönig API-Key eingeben …",
   "settings.btn_validate": "Prüfen",
@@ -146,5 +147,17 @@
   "stats.title_history": "Preisverlauf – {fuel}",
   "stats.title_daily": "Tagesdurchschnitt – {fuel}",
   "stats.title_comparison": "Stationsvergleich – {fuel}",
-  "stats.title_hourly": "Tageszeit-Analyse – {fuel}"
+  "stats.title_hourly": "Tageszeit-Analyse – {fuel}",
+  "stats.tab_weekday": "Wochentag",
+  "stats.title_weekday": "Wochentag-Durchschnitt – {fuel}",
+  "stats.weekday_mon": "Mo",
+  "stats.weekday_tue": "Di",
+  "stats.weekday_wed": "Mi",
+  "stats.weekday_thu": "Do",
+  "stats.weekday_fri": "Fr",
+  "stats.weekday_sat": "Sa",
+  "stats.weekday_sun": "So",
+  "stats.weekday_cheapest": "Günstigster Tag\n{day}",
+  "stats.weekday_locked": "Noch {n} Datenpunkte bis zur Freischaltung ({have}/{need})",
+  "stats.weekday_locked_ax_text": "{n} Datenpunkte bis Grafik verfügbar."
 }

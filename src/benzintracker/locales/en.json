@@ -83,6 +83,7 @@
   "stats.export_success_message": "Saved:\n{path}",
   "stats.export_failed_title": "Export failed",
   "stats.btn_export": "Export",
+  "stats.data_daterange": "Data Range",
   "settings.group_api": "API Key",
   "settings.api_placeholder": "Enter Tankerkönig API key …",
   "settings.btn_validate": "Validate",
@@ -147,5 +148,17 @@
   "stats.title_history": "Price History – {fuel}",
   "stats.title_daily": "Daily Average – {fuel}",
   "stats.title_comparison": "Station Comparison – {fuel}",
-  "stats.title_hourly": "Time of Day Analysis – {fuel}"
+  "stats.title_hourly": "Time of Day Analysis – {fuel}",
+  "stats.tab_weekday": "Weekday",
+  "stats.title_weekday": "Weekday Average – {fuel}",
+  "stats.weekday_mon": "Mon",
+  "stats.weekday_tue": "Tue",
+  "stats.weekday_wed": "Wed",
+  "stats.weekday_thu": "Thu",
+  "stats.weekday_fri": "Fri",
+  "stats.weekday_sat": "Sat",
+  "stats.weekday_sun": "Sun",
+  "stats.weekday_cheapest": "Cheapest\n{day}",
+  "stats.weekday_locked": "{n} more data points needed ({have}/{need})",
+  "stats.weekday_locked_ax_text": "{n} until the chart is available."
 }
