@@ -34,7 +34,6 @@ from benzintracker.database import models
 from benzintracker import config
 from benzintracker.translator import tr, translator
 
-
 TOOLBAR_HEIGHT              = 44
 MAP_CENTER                  = (51.0, 10.0)
 MAP_ZOOM_START_LEVEL        = 9

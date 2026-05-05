@@ -25,7 +25,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QFont, QPalette
 
-from benzintracker import config
 from benzintracker.translator import tr, translator
 
 
@@ -131,8 +130,6 @@ class TableTab(QWidget):
         self.table.setSortingEnabled(True)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(True)
-
-        self.table.itemSelectionChanged.connect(self._on_row_selected)
 
         return self.table
 
@@ -333,6 +330,7 @@ class TableTab(QWidget):
             QMessageBox.critical(self, tr("table.dlg_export_failed_title"), str(e))
 
 
+    # Legacy code of map tab;
     def _on_row_selected(self):
         selected = self.table.selectedItems()
         if not selected: return

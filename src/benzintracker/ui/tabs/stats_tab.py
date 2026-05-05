@@ -62,6 +62,9 @@ FIGURE_EXPORT_DPI            = 150
 
 def _period_options() -> dict:
     return {
+        tr("stats.period_1"):          1,
+        tr("stats.period_2"):          2,
+        tr("stats.period_3"):          3,
         tr("stats.period_7"):          7,
         tr("stats.period_30"):        30,
         tr("stats.period_90"):        90,
@@ -180,7 +183,7 @@ def _period_combo() -> QComboBox:
     c = QComboBox()
     for label, days in _period_options().items():
         c.addItem(label, userData=days)
-    c.setCurrentIndex(0)
+    c.setCurrentIndex(3)
 
     return c
 
@@ -341,8 +344,14 @@ class PriceHistoryChart(QWidget):
             )
 
         else:
-            ax.xaxis.set_major_formatter(mdates.DateFormatter("%d.%m"))
-            ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+            if days == 1:
+                ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+                ax.xaxis.set_major_locator(mdates.HourLocator(interval=2))
+            
+            else:
+                ax.xaxis.set_major_formatter(mdates.DateFormatter("%d.%m"))
+                ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+
             self.canvas.fig.autofmt_xdate()
             ax.set_ylabel(tr("stats.ylabel_price_plain", fuel=FUEL_LABELS[fuel]))
             ax.legend(fontsize=9, framealpha=0.7)

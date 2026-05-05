@@ -2,13 +2,13 @@
 main_window.py
 Author: Frank Hoffmann
 AI Assistent: Anthropic Claude AI - Sonnet 4.6
-Date: 08.04.2026
+Date: 05.05.2026
 License: MIT
 Description: Main Window of the Application.
 =========================================================================================
 
 Responsible for:
-    - Tab-Structure (Map, Price-table, statistics, Settings)
+    - Tab-Structure (Price-table, statistics, Settings)
     - QTimer for the automatic refresh
     - Theme Handling (Light / Dark)
     - Statusbar wit the last API-Call timestamp and timer for next refresh
@@ -27,7 +27,6 @@ from PySide6.QtGui import QAction, QIcon
 
 from benzintracker.__init__ import __version__
 from benzintracker.ui.styles import apply_theme
-from benzintracker.ui.tabs.map_tab import MapTab
 from benzintracker.ui.tabs.table_tab import TableTab
 from benzintracker.ui.tabs.stats_tab import StatsTab
 from benzintracker.ui.tabs.settings_tab import SettingsTab
@@ -77,12 +76,10 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)         # Cleaner Look without extra borders;
 
-        self.tab_map = MapTab(self)
         self.tab_table = TableTab(self)
         self.tab_stats = StatsTab(self)
         self.tab_settings = SettingsTab(self)
 
-        self.tabs.addTab(self.tab_map, tr("tabs.map"))
         self.tabs.addTab(self.tab_table, tr("tabs.prices"))
         self.tabs.addTab(self.tab_stats, tr("tabs.stats"))
         self.tabs.addTab(self.tab_settings, tr("tabs.settings"))
@@ -211,7 +208,6 @@ class MainWindow(QMainWindow):
         # Fill tabs with the new data;
         self._last_stations = stations
         self.tab_table.update_data(stations)
-        self.tab_map.update_data(stations)
         self.tab_stats.update_data(stations)
 
         self._update_manual_refresh_button()
@@ -371,7 +367,6 @@ class MainWindow(QMainWindow):
         app_settings.theme = theme
         apply_theme(theme)
         self.tab_stats.set_theme(theme == "dark")
-        self.tab_map.set_theme(theme == "dark")
 
 
 
@@ -383,10 +378,9 @@ class MainWindow(QMainWindow):
         Update the UI texts after a language change.
         """
         self.setWindowTitle(tr("app.title"))
-        self.tabs.setTabText(0, tr("tabs.map"))
-        self.tabs.setTabText(1, tr("tabs.prices"))
-        self.tabs.setTabText(2, tr("tabs.stats"))
-        self.tabs.setTabText(3, tr("tabs.settings"))
+        self.tabs.setTabText(0, tr("tabs.prices"))
+        self.tabs.setTabText(1, tr("tabs.stats"))
+        self.tabs.setTabText(2, tr("tabs.settings"))
         self.btn_manual_refresh.setText(tr("toolbar.refresh_now"))
         self._update_manual_refresh_button()
         self._update_next_refresh_label()
@@ -410,6 +404,7 @@ class MainWindow(QMainWindow):
             self._update_next_refresh_label()
 
 
+    # Legacy method for map tab;
     def _on_station_selected(self, station_id: str):
         """
         Jump to the Map-Tab and center onto the chosen station.
