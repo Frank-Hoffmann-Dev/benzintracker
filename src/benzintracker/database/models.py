@@ -316,6 +316,58 @@ def get_weekday_averages(
     return remapped
 
 
+def get_spread_per_period(
+        fuel_type: str, granularity: str = "day", days: int | None = None,
+        lat: float | None = None, lng: float | None = None,
+        radius_km: float | None = None, station_ids: list[str] | None = None
+    ) -> list[dict]:
+    """
+    Returns MIN, MAX, and AVG price per day or ISO-week for the given filters.
+
+    granularity = "day" -> groups by DATE(recorded_at)
+    granularity = "week" -> groups by strftime("%Y-W%M", recorded_at)
+    """
+    conn = get_connection()
+
+    if granularity == "week": period_expr = "strftime('%Y-W%W', p.recorded_at)"
+    else: period_expr = "DATE(p.recorded_at)"
+
+    conditions = ["p.fuel_type = ?"]
+    params: list = [fuel_type]
+
+    if days is not None:
+        conditions.append("p.recorded_at >= datetime('now', ?)")
+        params.append(f"-{days} days")
+
+    location_join = ""
+    if lat is not None and lng is not None and radius_km is not None:
+        location_join = "JOIN stations s ON s.id = p.station_id"
+        conditions.append("haversine(s.lat, s.lng, ?, ?) <= ?")
+        params += [lat, lng, radius_km]
+
+    if station_ids:
+        placeholders = ",".join("?" * len(station_ids))
+        conditions.append(f"p.station_id IN ({placeholders})")
+        params += station_ids
+
+    where = " AND ".join(conditions)
+
+    rows = conn.execute(f"""
+        SELECT
+            {period_expr} AS period,
+            MIN(p.price) AS min_price,
+            MAX(p.price) AS max_price,
+            AVG(p.price) AS avg_price,
+            COUNT(*) as cnt
+        FROM prices p {location_join}
+        WHERE {where}
+        GROUP BY period
+        ORDER BY period ASC
+    """, params).fetchall()
+    conn.close()
+
+    return [dict(row) for row in rows]
+
 
 # ---------------------------------------------------------------------------------------------------
 # Locations;

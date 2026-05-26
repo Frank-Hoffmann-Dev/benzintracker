@@ -19,7 +19,7 @@ Filter (fuel type, time period, stations) can be set individually per chart.
 Matplotlib is embeded via 'FigureCanvasQTAgg' inside a QWidget, therefore no seperate window is required.
 The chart is part of the GUI.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import matplotlib
 matplotlib.use("QtAgg")             # Force the Qt backend;
@@ -849,6 +849,248 @@ class WeekdayAverageChart(QWidget):
         self.refresh()
             
 
+class PriceSpreadChart(QWidget):
+    """
+    Price Spread / Volatility
+
+    Shows the daily or weekly MIN, MAX and AVG prices as a band chart.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._dark = False
+        self._build_ui()
+
+
+    def _build_ui(self):
+        root = QVBoxLayout(self)
+
+        # Toolbar row;
+        bar = QHBoxLayout()
+
+        bar.addWidget(QLabel(tr("stats.label_fuel")))
+        self.combo_fuel = QComboBox()
+        for key, label in FUEL_LABELS.items():
+            self.combo_fuel.addItem(label, userData=key)
+        bar.addWidget(self.combo_fuel)
+
+        bar.addSpacing(16)
+        bar.addWidget(QLabel(tr("stats.label_period")))
+        self.combo_period = QComboBox()
+        self._populate_period_combo()
+        bar.addWidget(self.combo_period)
+
+        bar.addSpacing(16)
+        bar.addWidget(QLabel(tr("stats.spread_label_granularity")))
+        self.combo_gran = QComboBox()
+        self.combo_gran.addItem(tr("stats.spread_gran_day"), userData="day")
+        self.combo_gran.addItem(tr("stats.spread_gran_week"), userData="week")
+
+        bar.addWidget(self.combo_gran)
+
+        bar.addStretch()
+
+        btn_refresh = QPushButton(tr("stats.btn_refresh"))
+        btn_refresh.clicked.connect(self.refresh)
+        bar.addWidget(btn_refresh)
+
+        btn_export = QPushButton(tr("stats.btn_export"))
+        btn_export.setObjectName("btn_secondary")
+        btn_export.clicked.connect(lambda: self.canvas.export(self))
+        bar.addWidget(btn_export)
+
+        root.addLayout(bar)
+
+        # Station List;
+        root.addWidget(QLabel(tr("stats.label_stations")))
+        self.station_list = QListWidget()
+        self.station_list.setSelectionMode(
+            QAbstractItemView.SelectionMode.MultiSelection
+        )
+        self.station_list.setMaximumHeight(STATION_SELECTION_MAX_HEIGHT)
+        root.addWidget(self.station_list)
+
+        self.canvas = MplCanvas(self)
+        root.addWidget(self.canvas)
+
+        self._populate_stations()
+
+
+    # Helpers;
+    def _populate_period_combo(self):
+        options = _period_options()
+        self.combo_period.clear()
+        for label, days in options.items():
+            self.combo_period.addItem(label, userData=days)
+        self.combo_period.setCurrentIndex(3)
+
+
+    def _populate_stations(self):
+        self.station_list.clear()
+
+        loc = models.get_default_location()
+        if loc:
+            all_stations = models.get_all_stations_near(
+                loc["lat"], loc["lng"], loc["radius_km"]
+            )
+        else: all_stations = models.get_all_stations()
+
+        all_names = [s["name"] for s in all_stations]
+        duplicates = {n for n in all_names if all_names.count(n) > 1}
+
+        for s in all_stations:
+            name = s["name"] or s["id"]
+            street = s.get("street", "")
+            house_number = s.get("house_number", "")
+
+            if name in duplicates and street and street.lower() not in name.lower():
+                display = f"{name}, {street} {house_number}".strip()
+            else: display = name
+
+            item = QListWidgetItem(display)
+            item.setData(Qt.ItemDataRole.UserRole, s["id"])
+            self.station_list.addItem(item)
+
+
+    def _selected_station_ids(self) -> list[str] | None:
+        sel = self.station_list.selectedItems()
+        if sel: return [item.data(Qt.ItemDataRole.UserRole) for item in sel]
+
+        return None
+
+
+    def refresh(self):
+        fuel = self.combo_fuel.currentData()
+        days = self.combo_period.currentData()
+        granularity = self.combo_gran.currentData()
+        station_ids = self._selected_station_ids()
+        loc = models.get_default_location()
+
+        kwargs: dict = dict(
+            fuel_type=fuel,
+            granularity=granularity,
+            days=days,
+            station_ids=station_ids
+        )
+
+        if loc: kwargs.update(lat=loc["lat"], lng=loc["lng"], radius_km=loc["radius_km"])
+
+        rows = models.get_spread_per_period(**kwargs)
+
+        # Clear Canvas;
+        self.canvas.clear()
+        ax = self.canvas.ax
+        fg = QApplication.instance().palette().color(QPalette.ColorRole.Text).name()
+
+        if not rows:
+            ax.text(
+                0.5, 0.5, tr("stats.no_data"),
+                ha="center", va="center",
+                transform=ax.transAxes, fontsize=12, color="gray"
+            )
+            self.canvas.set_title(
+                tr("stats.spread_title", fuel=FUEL_LABELS[fuel])
+            )
+            self.canvas.apply_theme(self._dark)
+            return
+
+        # Parse periods;
+        if granularity == "day":
+            x = [datetime.strptime(r["period"], "%Y-%m-%d") for r in rows]
+        else:
+            x = [
+                datetime.strptime(r["period"] + "-1", "%Y-W%W-%w")
+                for r in rows
+            ]
+
+        mins = [r["min_price"] for r in rows]
+        maxs = [r["max_price"] for r in rows]
+        avgs = [r["avg_price"] for r in rows]
+
+        color_avg = LINE_COLORS[0]
+        color_band = LINE_COLORS[0]
+
+        # Shaded MIN-MAX band;
+        ax.fill_between(
+            x, mins, maxs,
+            alpha=0.18, color=color_band,
+            label=tr("stats.spread_legend_range")
+        )
+
+        # Dashed MIN line;
+        ax.plot(
+            x, mins, "--", color="#4CAF50", linewidth=1.2, alpha=0.8,
+            label=tr("stats.spread_legend_min")
+        )
+
+        # Dashed MAX line;
+        ax.plot(
+            x, maxs, "--", color="#E91E63", linewidth=1.2, alpha=0.8,
+            label=tr("stats.spread_legend_max")
+        )
+
+        # Solid AVG line (on top);
+        ax.plot(
+            x, avgs, "-", color=color_avg, linewidth=2.0,
+            marker="o", markersize=3,
+            label=tr("stats.spread_legend_avg"), zorder=5
+        )
+
+        # Annotate the day with the largest spread;
+        spreads = [mx - mn for mn, mx in zip(mins, maxs)]
+        peak_i = spreads.index(max(spreads))
+
+        if max(spreads) > 0.001:
+            ax.annotate(
+                tr("stats.spread_peak_label", diff=f"{spreads[peak_i]:.3f}"),
+                xy=(x[peak_i], maxs[peak_i]),
+                xytext=(x[peak_i], maxs[peak_i] + (max(maxs) - min(mins)) * 0.12),
+                ha="center", fontsize=8, color=fg,
+                arrowprops=dict(arrowstyle="->", color="gray", lw=0.8)
+            )
+
+        # Axis Formatting;
+        if granularity == "day" and days <= 7:
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%d.%m"))
+            ax.xaxis.set_major_locator(mdates.DayLocator())
+
+        elif granularity == "day":
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%d.%m"))
+            ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+
+        else:
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("KW %W\n%Y"))
+            ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=0))
+
+        self.canvas.fig.autofmt_xdate()
+        ax.set_ylabel(tr("stats.ylabel_price", fuel=FUEL_LABELS[fuel]))
+        ax.legend(fontsize=9, framealpha=0.7)
+        ax.grid(True, linewidth=0.5, alpha=0.5)
+
+        # Date range Footer;
+        if rows: self.canvas.set_date_range(rows[0]["period"][:10], rows[-1]["period"][:10])
+
+        self.canvas.set_title(tr("stats.spread_title", fuel=FUEL_LABELS[fuel]))
+
+        self.canvas.apply_theme(self._dark)
+
+
+    # Public Interface;
+    def update_data(self, _stations):
+        self._populate_stations()
+        self.refresh()
+
+
+    def set_dark(self, dark: bool):
+        self._dark = dark
+        self.refresh()
+
+    
+    def retranslate(self):
+        self._populate_period_combo()
+        self.combo_gran.setItemText(0, tr("stats.spead_gran_day"))
+        self.combo_gran.setItemText(1, tr("stats.spead_gran_week"))
+        self._populate_stations()
+
 
 # ---------------------------------------------------------------------------------------------------
 # StatsTab - holds all four Charts;
@@ -876,12 +1118,14 @@ class StatsTab(QWidget):
         self.chart_comparison = StationComparisonChart(self)
         self.chart_hourly = HourlyPriceChart(self)
         self.chart_weekday = WeekdayAverageChart(self)
+        self.chart_price_spread = PriceSpreadChart(self)
 
         self.sub_tabs.addTab(self.chart_history, tr("stats.tab_history"))
         self.sub_tabs.addTab(self.chart_daily, tr("stats.tab_daily"))
         self.sub_tabs.addTab(self.chart_comparison, tr("stats.tab_comparison"))
         self.sub_tabs.addTab(self.chart_hourly, tr("stats.tab_hourly"))
         self.sub_tabs.addTab(self.chart_weekday, tr("stats.tab_weekday"))
+        self.sub_tabs.addTab(self.chart_price_spread, tr("stats.tab_spread"))
 
         root.addWidget(self.sub_tabs)
 
