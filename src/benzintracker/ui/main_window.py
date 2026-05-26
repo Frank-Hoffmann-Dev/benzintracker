@@ -271,7 +271,6 @@ class MainWindow(QMainWindow):
 
         if self._last_stations:
             self.tab_table.update_data(self._last_stations)
-            self.tab_map.update_data(self._last_stations)
             self.tab_stats.update_data(self._last_stations)
 
 
